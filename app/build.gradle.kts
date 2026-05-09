@@ -25,12 +25,9 @@ android {
 
     signingConfigs {
         create("release") {
-            val keystoreBase64 = System.getenv("KEYSTORE_BASE64")
-            if (keystoreBase64 != null) {
-                val keystoreFile = rootProject.layout.buildDirectory.file("keystore.jks").get().asFile
-                keystoreFile.parentFile.mkdirs()
-                keystoreFile.writeBytes(java.util.Base64.getDecoder().decode(keystoreBase64))
-                storeFile = keystoreFile
+            val keystorePath = System.getenv("KEYSTORE_PATH")
+            if (keystorePath != null) {
+                storeFile = file(keystorePath)
                 storePassword = System.getenv("STORE_PASSWORD")
                 keyAlias = System.getenv("KEY_ALIAS")
                 keyPassword = System.getenv("KEY_PASSWORD")
