@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">KIA OBD</string>
+    <string name="dashboard">Панель приборов</string>
+    <string name="dtc">Коды ошибок</string>
+    <string name="settings">Настройки</string>
+    <string name="player">Видеозаписи</string>
+    <string name="recording">Запись</string>
+    <string name="connected">Подключено</string>
+    <string name="disconnected">Не подключено</string>
+    <string name="speed">Скорость</string>
+    <string name="rpm">Обороты</string>
+    <string name="coolant">Температура ОЖ</string>
+    <string name="fuel">Уровень топлива</string>
+    <string name="map_pressure">Давление MAP</string>
+    <string name="throttle">Дроссель</string>
+    <string name="timing">УОЗ</string>
+    <string name="iat">Температура впуска</string>
+    <string name="no_errors">Ошибок нет</string>
+    <string name="clear_dtc">Сбросить ошибки</string>
+    <string name="clear_dtc_confirm">Все коды ошибок будут удалены</string>
+    <string name="cancel">Отмена</string>
+    <string name="confirm">Подтвердить</string>
+    <string name="ldw_alert">Выезд из полосы!</string>
+    <string name="fcw_alert">Опасность столкновения!</string>
+    <string name="fatigue_alert">Усталость водителя!</string>
+    <string name="pedestrian_alert">Пешеход на дороге!</string>
+    <string name="speed_exceeded">Превышение скорости!</string>
+</resources>
