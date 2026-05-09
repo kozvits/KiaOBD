@@ -27,9 +27,9 @@ android {
         create("release") {
             val keystoreBase64 = System.getenv("KEYSTORE_BASE64")
             if (keystoreBase64 != null) {
-                val keystoreFile = file("${rootProject.buildDir}/keystore.jks")
+                val keystoreFile = rootProject.layout.buildDirectory.file("keystore.jks").get().asFile
                 keystoreFile.parentFile.mkdirs()
-                keystoreFile.writeBytes(android.util.Base64.decode(keystoreBase64, android.util.Base64.DEFAULT))
+                keystoreFile.writeBytes(java.util.Base64.getDecoder().decode(keystoreBase64))
                 storeFile = keystoreFile
                 storePassword = System.getenv("STORE_PASSWORD")
                 keyAlias = System.getenv("KEY_ALIAS")
