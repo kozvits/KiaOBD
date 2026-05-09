@@ -23,7 +23,19 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Grant execute permission for gradlew
+      - name: Bootstrap gradle-wrapper.jar
+        run: |
+          GRADLE_VERSION="8.7"
+          JAR_URL="https://raw.githubusercontent.com/gradle/gradle/v${GRADLE_VERSION}.0/gradle/wrapper/gradle-wrapper.jar"
+          mkdir -p gradle/wrapper
+          curl -fsSL "$JAR_URL" -o gradle/wrapper/gradle-wrapper.jar
+          if [ ! -s gradle/wrapper/gradle-wrapper.jar ]; then
+            curl -fsSL "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" -o /tmp/gradle.zip
+            unzip -q /tmp/gradle.zip -d /tmp/gradle-dist
+            /tmp/gradle-dist/gradle-${GRADLE_VERSION}/bin/gradle wrapper --gradle-version=${GRADLE_VERSION}
+          fi
+
+      - name: Make gradlew executable
         run: chmod +x gradlew
 
       - name: Check for duplicate Kotlin sources
