@@ -23,20 +23,8 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Bootstrap gradle-wrapper.jar and fix permissions
-        run: |
-          GRADLE_VERSION="8.7"
-          mkdir -p gradle/wrapper
-          curl -fsSL \
-            "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
-            -o /tmp/gradle.zip
-          unzip -q /tmp/gradle.zip -d /tmp/gradle-dist
-          WRAPPER_JAR=$(find /tmp/gradle-dist -name "gradle-wrapper-*.jar" | head -1)
-          if [ -z "$WRAPPER_JAR" ]; then
-            WRAPPER_JAR=$(find /tmp/gradle-dist -name "gradle-launcher-*.jar" | head -1)
-          fi
-          cp "$WRAPPER_JAR" gradle/wrapper/gradle-wrapper.jar
-          chmod +x gradlew
+      - name: Make gradlew executable
+        run: chmod +x gradlew
 
       - name: Check for duplicate Kotlin sources
         run: |
