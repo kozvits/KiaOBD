@@ -169,12 +169,11 @@ private fun BluetoothDeviceSelector(
             )
         }
         devices.forEach { device ->
+            val deviceName = try { device.name ?: "Неизвестно" } catch (_: SecurityException) { "Неизвестно" }
             DropdownMenuItem(
                 text = {
                     Column {
-                        try {
-                            Text(device.name ?: "Неизвестно", color = Color.White, fontSize = 14.sp)
-                        } catch (_: SecurityException) {}
+                        Text(deviceName, color = Color.White, fontSize = 14.sp)
                         Text(device.address, color = Color.Gray, fontSize = 11.sp)
                     }
                 },
