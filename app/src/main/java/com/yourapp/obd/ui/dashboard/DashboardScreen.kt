@@ -1,5 +1,8 @@
 package com.yourapp.obd.ui.dashboard
 
+import android.Manifest
+import android.content.pm.PackageManager
+import androidx.camera.view.PreviewView
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -33,6 +36,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -42,10 +46,13 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yourapp.obd.data.bluetooth.ConnectionState
@@ -73,12 +80,45 @@ fun DashboardScreen(
     val isRecording by viewModel.isRecording.collectAsStateWithLifecycle()
     val obdData by viewModel.obdData.collectAsStateWithLifecycle()
     val lastAlert by viewModel.lastAlert.collectAsStateWithLifecycle()
+    val context = LocalContext.current
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(DarkBackground)
     ) {
+        // Hidden camera preview for CameraX initialization
+        AndroidView(
+            factory = { ctx ->
+                PreviewView(ctx).apply {
+                    implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+                    scaleType = androidx.camera.view.PreviewView.ScaleType.FILL_CENTER
+                }
+            },
+            modifier = Modifier
+                .size(1.dp)
+                .align(Alignment.TopStart)
+        ).also { previewViewCompose ->
+            DisposableEffect(Unit) {
+                val previewView = previewViewCompose.findViewById<PreviewView>(androidx.camera.view.R.id.preview_view)
+                    ?: return@DisposableEffect onDispose {}
+                
+                val lifecycleOwner = previewView.findViewTreeLifecycleOwner() 
+                    ?: return@DisposableEffect onDispose {}
+                
+                viewModel.bindCamera(lifecycleOwner, previewView)
+                
+                // Check camera permission and start recording if granted
+                if (ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                    viewModel.startRecording()
+                }
+                
+                onDispose {
+                    viewModel.stopRecording()
+                }
+            }
+        }
+
         Column(modifier = Modifier.fillMaxSize()) {
             StatusBar(
                 connectionState = connectionState,
