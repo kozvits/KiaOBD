@@ -8,7 +8,6 @@ import androidx.camera.core.ImageProxy
 import com.google.mediapipe.tasks.core.BaseOptions
 import com.google.mediapipe.tasks.vision.core.RunningMode
 import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarker
-import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerOptions
 import com.yourapp.obd.domain.model.AdasAlert
 import com.yourapp.obd.domain.model.AlertLevel
 import kotlinx.coroutines.CoroutineScope
@@ -19,11 +18,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 import org.opencv.android.Utils
-import org.opencv.core.Core
-import org.opencv.core.CvType
 import org.opencv.core.Mat
-import org.opencv.core.Point
-import org.opencv.core.Scalar
 import org.opencv.core.Size
 import org.opencv.imgproc.Imgproc
 import org.tensorflow.lite.Interpreter
@@ -92,7 +87,7 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
             val baseOptions = BaseOptions.builder()
                 .setModelAssetPath("face_landmarker.task")
                 .build()
-            val options = FaceLandmarkerOptions.builder()
+            val options = FaceLandmarker.FaceLandmarkerOptions.builder()
                 .setBaseOptions(baseOptions)
                 .setRunningMode(RunningMode.IMAGE)
                 .setNumFaces(1)
@@ -116,7 +111,6 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
         val bitmap = image.toBitmap()
         val rotated = rotateBitmap(bitmap, image.imageInfo.rotationDegrees.toFloat())
         image.close()
-
         scope.launch {
             if (ldwEnabled) analyzeLdw(rotated)
             if (fcwEnabled) analyzeFcw(rotated)
@@ -132,15 +126,12 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
         Utils.bitmapToMat(bitmap, mat)
         val gray = Mat()
         Imgproc.cvtColor(mat, gray, Imgproc.COLOR_RGBA2GRAY)
-
         val roiStart = (gray.rows() * 0.4).toInt()
         val roi = gray.submat(roiStart, gray.rows(), 0, gray.cols())
-
         val blurred = Mat()
         Imgproc.GaussianBlur(roi, blurred, Size(5.0, 5.0), 0.0)
         val edges = Mat()
         Imgproc.Canny(blurred, edges, 50.0, 150.0)
-
         val lines = Mat()
         Imgproc.HoughLinesP(edges, lines, 1.0, Math.PI / 180.0, 50, 50.0, 20.0)
 
@@ -159,7 +150,6 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
             if (midX < centerX && slope < 0) { leftX += midX; leftCount++ }
             else if (midX > centerX && slope > 0) { rightX += midX; rightCount++ }
         }
-
         if (leftCount > 0) leftX /= leftCount
         if (rightCount > 0) rightX /= rightCount
 
@@ -170,11 +160,8 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
 
         if (deviation > LDW_DEVIATION_THRESHOLD) {
             val direction = if (vehicleCenter < laneCenter) "LEFT" else "RIGHT"
-            scope.launch {
-                _alerts.emit(AdasAlert.LaneDeparture(direction, deviation.toFloat()))
-            }
+            scope.launch { _alerts.emit(AdasAlert.LaneDeparture(direction, deviation.toFloat())) }
         }
-
         mat.release(); gray.release(); roi.release()
         blurred.release(); edges.release(); lines.release()
     }
@@ -190,14 +177,10 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
 
         var maxArea = 0f
         for (i in 0 until outputShape[1]) {
-            val conf = output[0][i][4]
-            if (conf < 0.5f) continue
-            val w = output[0][i][2]
-            val h = output[0][i][3]
-            val area = w * h
+            if (output[0][i][4] < 0.5f) continue
+            val area = output[0][i][2] * output[0][i][3]
             if (area > maxArea) maxArea = area
         }
-
         if (maxArea > 0f && prevBoxArea > 0f) {
             val growthRate = (maxArea - prevBoxArea) / prevBoxArea
             if (growthRate > 0.05f) {
@@ -229,52 +212,53 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
         val detectedSpeed = speeds.getOrNull(maxIdx) ?: return
         lastDetectedSign = detectedSpeed
         if (currentSpeedKmh > detectedSpeed + 10) {
-            scope.launch {
-                _alerts.emit(AdasAlert.SpeedLimitExceeded(detectedSpeed, currentSpeedKmh))
-            }
+            scope.launch { _alerts.emit(AdasAlert.SpeedLimitExceeded(detectedSpeed, currentSpeedKmh)) }
         }
     }
 
     private fun analyzeDms(bitmap: Bitmap) {
         val landmarker = faceLandmarker ?: return
-        val mpImage = com.google.mediapipe.framework.image.BitmapImageBuilder(bitmap).build()
-        val result = landmarker.detect(mpImage) ?: return
-        if (result.faceLandmarks().isEmpty()) return
-        val landmarks = result.faceLandmarks()[0]
-        if (landmarks.size < 387) return
+        try {
+            val mpImage = com.google.mediapipe.framework.image.BitmapImageBuilder(bitmap).build()
+            val result = landmarker.detect(mpImage) ?: return
+            if (result.faceLandmarks().isEmpty()) return
+            val landmarks = result.faceLandmarks()[0]
+            if (landmarks.size < 387) return
 
-        fun dist(a: com.google.mediapipe.tasks.components.containers.NormalizedLandmark,
-                 b: com.google.mediapipe.tasks.components.containers.NormalizedLandmark): Float {
-            val dx = a.x() - b.x(); val dy = a.y() - b.y()
-            return sqrt(dx * dx + dy * dy)
-        }
+            fun dist(
+                a: com.google.mediapipe.tasks.components.containers.NormalizedLandmark,
+                b: com.google.mediapipe.tasks.components.containers.NormalizedLandmark
+            ): Float {
+                val dx = a.x() - b.x(); val dy = a.y() - b.y()
+                return sqrt(dx * dx + dy * dy)
+            }
 
-        val leftEar = (dist(landmarks[159], landmarks[145]) + dist(landmarks[158], landmarks[153])) /
-                (2f * dist(landmarks[133], landmarks[33]))
-        val rightEar = (dist(landmarks[386], landmarks[374]) + dist(landmarks[385], landmarks[380])) /
-                (2f * dist(landmarks[362], landmarks[263]))
-        val ear = (leftEar + rightEar) / 2f
+            val leftEar = (dist(landmarks[159], landmarks[145]) + dist(landmarks[158], landmarks[153])) /
+                    (2f * dist(landmarks[133], landmarks[33]))
+            val rightEar = (dist(landmarks[386], landmarks[374]) + dist(landmarks[385], landmarks[380])) /
+                    (2f * dist(landmarks[362], landmarks[263]))
+            val ear = (leftEar + rightEar) / 2f
 
-        if (earHistory.size >= PERCLOS_WINDOW_FRAMES) earHistory.removeFirst()
-        earHistory.addLast(ear < EAR_THRESHOLD)
+            if (earHistory.size >= PERCLOS_WINDOW_FRAMES) earHistory.removeFirst()
+            earHistory.addLast(ear < EAR_THRESHOLD)
 
-        val perclos = earHistory.count { it }.toFloat() / earHistory.size
-        if (perclos > PERCLOS_THRESHOLD) {
-            scope.launch { _alerts.emit(AdasAlert.DriverFatigue(perclos)) }
-        }
+            val perclos = earHistory.count { it }.toFloat() / earHistory.size
+            if (perclos > PERCLOS_THRESHOLD) {
+                scope.launch { _alerts.emit(AdasAlert.DriverFatigue(perclos)) }
+            }
 
-        val nose = landmarks[1]
-        val leftEye = landmarks[33]
-        val rightEye = landmarks[263]
-        val yaw = Math.toDegrees(
-            kotlin.math.atan2(
-                (rightEye.x() - leftEye.x()).toDouble(),
-                (rightEye.z() - leftEye.z()).toDouble()
-            )
-        ).toFloat()
-        if (abs(yaw) > YAW_THRESHOLD) {
-            scope.launch { _alerts.emit(AdasAlert.DriverDistracted(abs(yaw))) }
-        }
+            val leftEye = landmarks[33]
+            val rightEye = landmarks[263]
+            val yaw = Math.toDegrees(
+                kotlin.math.atan2(
+                    (rightEye.x() - leftEye.x()).toDouble(),
+                    (rightEye.z() - leftEye.z()).toDouble()
+                )
+            ).toFloat()
+            if (abs(yaw) > YAW_THRESHOLD) {
+                scope.launch { _alerts.emit(AdasAlert.DriverDistracted(abs(yaw))) }
+            }
+        } catch (_: Exception) {}
     }
 
     private fun analyzePedestrians(bitmap: Bitmap) {
@@ -285,7 +269,7 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
         val croppedBitmap = Bitmap.createBitmap(bitmap, 0, riskZoneStart, bitmap.width, height - riskZoneStart)
         val resized = Bitmap.createScaledBitmap(croppedBitmap, SSD_INPUT_SIZE, SSD_INPUT_SIZE, true)
 
-        val inputBuffer = ByteBuffer.allocateDirect(1 * SSD_INPUT_SIZE * SSD_INPUT_SIZE * 3)
+        val inputBuffer = ByteBuffer.allocateDirect(SSD_INPUT_SIZE * SSD_INPUT_SIZE * 3)
         inputBuffer.order(ByteOrder.nativeOrder())
         val pixels = IntArray(SSD_INPUT_SIZE * SSD_INPUT_SIZE)
         resized.getPixels(pixels, 0, SSD_INPUT_SIZE, 0, 0, SSD_INPUT_SIZE, SSD_INPUT_SIZE)
@@ -305,17 +289,15 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
 
         val count = numDetections[0].toInt()
         for (i in 0 until count) {
-            val classIdx = outputClasses[0][i].toInt()
-            val score = outputScores[0][i]
-            if (classIdx == 0 && score > PEDESTRIAN_CONFIDENCE) {
-                scope.launch { _alerts.emit(AdasAlert.PedestrianDetected(score)) }
+            if (outputClasses[0][i].toInt() == 0 && outputScores[0][i] > PEDESTRIAN_CONFIDENCE) {
+                scope.launch { _alerts.emit(AdasAlert.PedestrianDetected(outputScores[0][i])) }
                 break
             }
         }
     }
 
     private fun bitmapToFloatBuffer(bitmap: Bitmap, size: Int): ByteBuffer {
-        val buffer = ByteBuffer.allocateDirect(4 * 1 * size * size * 3)
+        val buffer = ByteBuffer.allocateDirect(4 * size * size * 3)
         buffer.order(ByteOrder.nativeOrder())
         val pixels = IntArray(size * size)
         bitmap.getPixels(pixels, 0, size, 0, 0, size, size)
