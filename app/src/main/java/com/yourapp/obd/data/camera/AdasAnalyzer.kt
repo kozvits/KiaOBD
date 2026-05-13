@@ -70,19 +70,25 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
     private var lastDetectedSign: Int? = null
 
     init {
-        loadModels()
+        // Удалено: loadModels() перенесено в ленивую загрузку
     }
 
     private fun loadModels() {
         try {
             yoloInterpreter = Interpreter(loadModelFile("yolov8n.tflite"))
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            android.util.Log.e("AdasAnalyzer", "Error loading YOLO: ${e.message}")
+        }
         try {
             signInterpreter = Interpreter(loadModelFile("mobilenetv3_signs.tflite"))
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            android.util.Log.e("AdasAnalyzer", "Error loading Signs: ${e.message}")
+        }
         try {
             ssdInterpreter = Interpreter(loadModelFile("mobilenet_ssd.tflite"))
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            android.util.Log.e("AdasAnalyzer", "Error loading SSD: ${e.message}")
+        }
         try {
             val baseOptions = BaseOptions.builder()
                 .setModelAssetPath("face_landmarker.task")
@@ -93,7 +99,9 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
                 .setNumFaces(1)
                 .build()
             faceLandmarker = FaceLandmarker.createFromOptions(context, options)
-        } catch (_: Exception) {}
+        } catch (e: Exception) {
+            android.util.Log.e("AdasAnalyzer", "Error loading Face: ${e.message}")
+        }
     }
 
     private fun loadModelFile(filename: String): MappedByteBuffer {
@@ -108,6 +116,16 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
             image.close()
             return
         }
+        
+        // Ленивая загрузка моделей в фоновом потоке, если они еще не готовы
+        if (yoloInterpreter == null) {
+            scope.launch(Dispatchers.IO) {
+                loadModels()
+            }
+            image.close()
+            return
+        }
+
         val bitmap = image.toBitmap()
         val rotated = rotateBitmap(bitmap, image.imageInfo.rotationDegrees.toFloat())
         image.close()
