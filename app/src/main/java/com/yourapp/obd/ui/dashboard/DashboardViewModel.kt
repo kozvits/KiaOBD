@@ -1,6 +1,8 @@
 package com.yourapp.obd.ui.dashboard
 
 import android.bluetooth.BluetoothDevice
+import androidx.camera.view.PreviewView
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yourapp.obd.data.bluetooth.BluetoothOBDRepository
@@ -75,6 +77,10 @@ class DashboardViewModel @Inject constructor(
                 recordVideoUseCase.protect()
             }
         }
+    }
+
+    fun bindCamera(lifecycleOwner: LifecycleOwner, previewView: PreviewView) {
+        cameraRepository.bindCamera(lifecycleOwner, previewView)
     }
 
     fun connectToDevice(device: BluetoothDevice) {
