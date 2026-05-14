@@ -48,7 +48,7 @@
         <service
             android:name=".service.DrivingForegroundService"
             android:exported="false"
-            android:foregroundServiceType="camera|mediaProjection" />
+            android:foregroundServiceType="camera" />
 
         <provider
             android:name="androidx.core.content.FileProvider"
