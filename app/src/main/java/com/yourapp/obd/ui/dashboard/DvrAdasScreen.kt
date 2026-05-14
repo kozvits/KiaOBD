@@ -16,6 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.hiltViewModel
 import com.yourapp.obd.ui.theme.*
 import com.yourapp.obd.domain.model.AdasAlert
+import com.yourapp.obd.domain.model.AlertLevel
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
 
