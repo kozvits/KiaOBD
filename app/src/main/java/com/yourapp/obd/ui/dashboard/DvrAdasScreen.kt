@@ -1,6 +1,5 @@
 package com.yourapp.obd.ui.dashboard
 
-import android.view.ViewGroup
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
@@ -10,15 +9,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.camera.view.PreviewView
-import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.hiltViewModel
 import com.yourapp.obd.ui.theme.*
-import com.yourapp.obd.domain.model.OBDData
+import com.yourapp.obd.domain.model.AdasAlert
 
 @Composable
 fun DvrAdasScreen(
@@ -37,12 +34,10 @@ fun DvrAdasScreen(
         AndroidView(
             factory = { context ->
                 PreviewView(context).apply {
-                    layoutParams = ViewGroup.LayoutParams(
-                        ViewGroup.LayoutParams.MATCH_PARENT,
-                        ViewGroup.LayoutParams.MATCH_PARENT
+                    layoutParams = android.view.ViewGroup.LayoutParams(
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+                        android.view.ViewGroup.LayoutParams.MATCH_PARENT
                     )
-                    // Привязка камеры происходит через ViewModel/Repository
-                    // Для полной реализации нужно передать LifecycleOwner
                 }
             },
             modifier = Modifier.fillMaxSize()
@@ -54,7 +49,7 @@ fun DvrAdasScreen(
                 alert = alert,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 40.dp)
+                    .padding(bottom = 60.dp)
             )
         }
 
@@ -96,23 +91,47 @@ fun DvrAdasScreen(
                     .padding(8.dp)
             )
         }
+        
+        // 4. Виджет анти-радара (Заглушка/UI часть)
+        RadarWidget(
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .padding(16.dp)
+        )
     }
 }
 
 @Composable
-private fun AdasAlertOverlay(alert la: com.yourapp.obd.domain.model.AdasAlert, modifier: Modifier) {
-    // Reusing the implementation from DashboardScreen for consistency
-    val (text, color) = when (alert) {
-        is com.yourapp.obd.domain.model.AdasAlert.LaneDeparture -> "⚠ ВЫЕЗД ИЗ ПОЛОСЫ ${alert.direction}" to AlertYellow
-        is com.yourapp.obd.domain.model.AdasAlert.ForwardCollision -> when (alert.level) {
-            com.yourapp.obd.domain.model.AlertLevel.DANGER -> "🔴 ОПАСНОСТЬ СТОЛКНОВЕНИЯ!" to AlertRed
-            com.yourapp.obd.domain.model.AlertLevel.WARNING -> "🟠 ВНИМАНИЕ! Авто близко" to AlertOrange
-            com.yourapp.obd.domain.model.AlertLevel.CAUTION -> "🟡 Сократи дистанцию" to AlertYellow
+fun RadarWidget(modifier: Modifier) {
+    Card(
+        modifier = modifier.size(width = 120.dp, height = 60.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkSurface.copy(alpha = 0.7f)),
+        shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(4.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Text("РАДАР", color = Color.Gray, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+            Text("АКТИВЕН", color = GreenOk, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         }
-        is com.yourapp.obd.domain.model.AdasAlert.SpeedLimitExceeded -> "🚫 Превышение: ${alert.actualKmh}/${alert.limitKmh} км/ч" to AlertRed
-        is com.yourapp.obd.domain.model.AdasAlert.DriverFatigue -> "😴 УСТАЛОСТЬ ВОДИТЕЛЯ!" to AlertRed
-        is com.yourapp.obd.domain.model.AdasAlert.DriverDistracted -> "👁 ОТВЛЕЧЕНИЕ ВОДИТЕЛЯ!" to AlertOrange
-        is com.yourapp.obd.domain.model.AdasAlert.PedestrianDetected -> "🚶 ПЕШЕХОД НА ДОРОГЕ!" to AlertYellow
+    }
+}
+
+@Composable
+private fun AdasAlertOverlay(alert: AdasAlert, modifier: Modifier) {
+    val (text, color) = when (alert) {
+        is AdasAlert.LaneDeparture -> "⚠ ВЫЕЗД ИЗ ПОЛОСЫ ${alert.direction}" to AlertYellow
+        is AdasAlert.ForwardCollision -> when (alert.level) {
+            AlertLevel.DANGER -> "🔴 ОПАСНОСТЬ СТОЛКНОВЕНИЯ!" to AlertRed
+            AlertLevel.WARNING -> "🟠 ВНИМАНИЕ! Авто близко" to AlertOrange
+            AlertLevel.CAUTION -> "🟡 Сократи дистанцию" to AlertYellow
+        }
+        is AdasAlert.SpeedLimitExceeded -> "🚫 Превышение: ${alert.actualKmh}/${alert.limitKmh} км/ч" to AlertRed
+        is AdasAlert.DriverFatigue -> "😴 УСТАЛОСТЬ ВОДИТЕЛЯ!" to AlertRed
+        is AdasAlert.DriverDistracted -> "👁 ОТВЛЕЧЕНИЕ ВОДИТЕЛЯ!" to AlertOrange
+        is AdasAlert.PedestrianDetected -> "🚶 ПЕШЕХОД НА ДОРОГЕ!" to AlertYellow
     }
     Card(
         modifier = modifier,
