@@ -143,7 +143,7 @@ fun TelemetryGrid(obdData: OBDData) {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricCard("Нагрузка", "${obdData.mapKpa ?: "--"} кПа", Modifier.weight(1f))
-            MetricCard("Топливо", "${obdData.fuelLevel la?.let { "%.0f".format(it) } ?: "--"}%", Modifier.weight(1f))
+            MetricCard("Топливо", "${obdData.fuelLevelPercent?.let { "%.0f".format(it) } ?: "--"}%", Modifier.weight(1f))
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             MetricCard("УОЗ", "${obdData.timingAdvanceDeg ?: "--"}°", Modifier.weight(1f))
