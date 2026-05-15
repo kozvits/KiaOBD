@@ -1,6 +1,8 @@
 package com.yourapp.obd.ui.dashboard
 
 import android.bluetooth.BluetoothDevice
+import androidx.camera.view.PreviewView
+import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.yourapp.obd.data.bluetooth.BluetoothOBDRepository
@@ -44,10 +46,25 @@ class DashboardViewModel @Inject constructor(
     private val _lastAlert = MutableStateFlow<AdasAlert?>(null)
     val lastAlert: StateFlow<AdasAlert?> = _lastAlert.asStateFlow()
 
+    // Флаг: камера уже привязана (избегаем повторного bindCamera при рекомпозиции)
+    private var cameraIsBound = false
+
     init {
         collectOBD()
         collectAlerts()
         collectImpacts()
+    }
+
+    /**
+     * Привязывает CameraX к lifecycle и PreviewView.
+     * Вызывается из DvrAdasScreen при создании AndroidView.
+     * Повторные вызовы игнорируются.
+     */
+    fun bindCamera(owner: LifecycleOwner, previewView: PreviewView) {
+        if (cameraIsBound) return
+        cameraIsBound = true
+        cameraRepository.bindCamera(owner, previewView)
+        cameraRepository.startRecording()
     }
 
     private fun collectOBD() {
@@ -85,4 +102,9 @@ class DashboardViewModel @Inject constructor(
 
     fun startRecording() = recordVideoUseCase.start()
     fun stopRecording() = recordVideoUseCase.stop()
+
+    override fun onCleared() {
+        super.onCleared()
+        cameraIsBound = false
+    }
 }

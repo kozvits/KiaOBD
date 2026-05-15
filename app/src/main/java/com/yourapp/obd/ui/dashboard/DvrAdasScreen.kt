@@ -20,9 +20,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -46,23 +49,26 @@ fun DvrAdasScreen(
     val lastAlert by viewModel.lastAlert.collectAsStateWithLifecycle()
     val isRecording by viewModel.isRecording.collectAsStateWithLifecycle()
 
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val context = LocalContext.current
+
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
     ) {
+        // Видеопоток камеры — bindCamera вызывается при создании PreviewView
         AndroidView(
-            factory = { context ->
-                PreviewView(context).apply {
-                    layoutParams = android.view.ViewGroup.LayoutParams(
-                        android.view.ViewGroup.LayoutParams.MATCH_PARENT,
-                        android.view.ViewGroup.LayoutParams.MATCH_PARENT
-                    )
+            factory = { ctx ->
+                PreviewView(ctx).also { previewView ->
+                    // Привязываем камеру сразу при создании View
+                    viewModel.bindCamera(lifecycleOwner, previewView)
                 }
             },
             modifier = Modifier.fillMaxSize()
         )
 
+        // Оверлей ADAS
         lastAlert?.let { alert ->
             AdasAlertOverlay(
                 alert = alert,
@@ -72,6 +78,7 @@ fun DvrAdasScreen(
             )
         }
 
+        // HUD
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -137,7 +144,7 @@ fun RadarWidget(modifier: Modifier) {
 @Composable
 private fun AdasAlertOverlay(alert: AdasAlert, modifier: Modifier) {
     val (text, color) = when (alert) {
-        is AdasAlert.LaneDeparture      -> "\u26a0 ВЫЕЗД ИЗ ПОЛОСЫ ${alert.direction}" to AlertYellow
+        is AdasAlert.LaneDeparture      -> "ВЫЕЗД ИЗ ПОЛОСЫ ${alert.direction}" to AlertYellow
         is AdasAlert.ForwardCollision   -> when (alert.level) {
             AlertLevel.DANGER  -> "ОПАСНОСТЬ СТОЛКНОВЕНИЯ!" to AlertRed
             AlertLevel.WARNING -> "ВНИМАНИЕ! Авто близко" to AlertOrange
