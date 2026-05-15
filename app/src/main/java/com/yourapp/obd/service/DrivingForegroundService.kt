@@ -36,16 +36,7 @@ class DrivingForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            startForeground(
-                NOTIFICATION_ID, 
-                buildNotification(), 
-                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
-            )
-        } else {
-            startForeground(NOTIFICATION_ID, buildNotification())
-        }
+        startForeground(NOTIFICATION_ID, buildNotification())
         monitorImpacts()
     }
 
