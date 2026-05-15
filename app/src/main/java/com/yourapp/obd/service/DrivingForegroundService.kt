@@ -1,13 +1,16 @@
 package com.yourapp.obd.service
 
+import android.Manifest
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.yourapp.obd.R
 import com.yourapp.obd.data.camera.CameraRepository
 import com.yourapp.obd.data.sensor.AccelerometerRepository
@@ -36,7 +39,29 @@ class DrivingForegroundService : Service() {
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
-        startForeground(NOTIFICATION_ID, buildNotification())
+
+        // На Android Q+ (API 29+) startForeground с типом camera требует
+        // чтобы разрешение CAMERA уже было выдано. Если нет — стартуем без типа.
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+            val hasCameraPermission = ContextCompat.checkSelfPermission(
+                this, Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+
+            if (hasCameraPermission) {
+                startForeground(
+                    NOTIFICATION_ID,
+                    buildNotification(),
+                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+                )
+            } else {
+                // Запускаемся без camera type — камера не будет использоваться
+                // пока пользователь не выдаст разрешение
+                startForeground(NOTIFICATION_ID, buildNotification())
+            }
+        } else {
+            startForeground(NOTIFICATION_ID, buildNotification())
+        }
+
         monitorImpacts()
     }
 
@@ -56,7 +81,7 @@ class DrivingForegroundService : Service() {
         scope.launch {
             accelerometerRepository.impactEvents().collect {
                 cameraRepository.markCurrentAsProtected()
-                updateNotification("⚠ Зафиксирован удар — видео защищено")
+                updateNotification("\u26a0 Зафиксирован удар — видео защищено")
             }
         }
     }
