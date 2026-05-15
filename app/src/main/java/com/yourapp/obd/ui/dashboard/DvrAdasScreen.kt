@@ -1,13 +1,25 @@
 package com.yourapp.obd.ui.dashboard
 
+import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -15,12 +27,16 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.camera.view.PreviewView
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.hiltViewModel
 import com.yourapp.obd.domain.model.AdasAlert
 import com.yourapp.obd.domain.model.AlertLevel
-import com.yourapp.obd.ui.theme.*
+import com.yourapp.obd.ui.theme.AccentCyan
+import com.yourapp.obd.ui.theme.AlertOrange
+import com.yourapp.obd.ui.theme.AlertRed
+import com.yourapp.obd.ui.theme.AlertYellow
+import com.yourapp.obd.ui.theme.DarkSurface
+import com.yourapp.obd.ui.theme.GreenOk
 
 @Composable
 fun DvrAdasScreen(
@@ -35,7 +51,6 @@ fun DvrAdasScreen(
             .fillMaxSize()
             .background(Color.Black)
     ) {
-        // 1. Видеопоток камеры
         AndroidView(
             factory = { context ->
                 PreviewView(context).apply {
@@ -48,7 +63,6 @@ fun DvrAdasScreen(
             modifier = Modifier.fillMaxSize()
         )
 
-        // 2. Оверлей ADAS
         lastAlert?.let { alert ->
             AdasAlertOverlay(
                 alert = alert,
@@ -58,7 +72,6 @@ fun DvrAdasScreen(
             )
         }
 
-        // 3. HUD
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -75,10 +88,7 @@ fun DvrAdasScreen(
                 Box(
                     modifier = Modifier
                         .size(12.dp)
-                        .background(
-                            if (isRecording) AlertRed else Color.Gray,
-                            CircleShape
-                        )
+                        .background(if (isRecording) AlertRed else Color.Gray, CircleShape)
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
@@ -98,7 +108,6 @@ fun DvrAdasScreen(
             )
         }
 
-        // 4. Радар виджет
         RadarWidget(
             modifier = Modifier
                 .align(Alignment.TopEnd)
@@ -115,9 +124,7 @@ fun RadarWidget(modifier: Modifier) {
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(4.dp),
+            modifier = Modifier.fillMaxSize().padding(4.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.Center
         ) {
@@ -130,16 +137,16 @@ fun RadarWidget(modifier: Modifier) {
 @Composable
 private fun AdasAlertOverlay(alert: AdasAlert, modifier: Modifier) {
     val (text, color) = when (alert) {
-        is AdasAlert.LaneDeparture -> "⚠ ВЫЕЗД ИЗ ПОЛОСЫ ${alert.direction}" to AlertYellow
-        is AdasAlert.ForwardCollision -> when (alert.level) {
-            AlertLevel.DANGER -> "🔴 ОПАСНОСТЬ СТОЛКНОВЕНИЯ!" to AlertRed
-            AlertLevel.WARNING -> "🟠 ВНИМАНИЕ! Авто близко" to AlertOrange
-            AlertLevel.CAUTION -> "🟡 Сократи дистанцию" to AlertYellow
+        is AdasAlert.LaneDeparture      -> "\u26a0 ВЫЕЗД ИЗ ПОЛОСЫ ${alert.direction}" to AlertYellow
+        is AdasAlert.ForwardCollision   -> when (alert.level) {
+            AlertLevel.DANGER  -> "ОПАСНОСТЬ СТОЛКНОВЕНИЯ!" to AlertRed
+            AlertLevel.WARNING -> "ВНИМАНИЕ! Авто близко" to AlertOrange
+            AlertLevel.CAUTION -> "Сократи дистанцию" to AlertYellow
         }
-        is AdasAlert.SpeedLimitExceeded -> "🚫 Превышение: ${alert.actualKmh}/${alert.limitKmh} км/ч" to AlertRed
-        is AdasAlert.DriverFatigue -> "😴 УСТАЛОСТЬ ВОДИТЕЛЯ!" to AlertRed
-        is AdasAlert.DriverDistracted -> "👁 ОТВЛЕЧЕНИЕ ВОДИТЕЛЯ!" to AlertOrange
-        is AdasAlert.PedestrianDetected -> "🚶 ПЕШЕХОД НА ДОРОГЕ!" to AlertYellow
+        is AdasAlert.SpeedLimitExceeded -> "Превышение: ${alert.actualKmh}/${alert.limitKmh} км/ч" to AlertRed
+        is AdasAlert.DriverFatigue      -> "УСТАЛОСТЬ ВОДИТЕЛЯ!" to AlertRed
+        is AdasAlert.DriverDistracted   -> "ОТВЛЕЧЕНИЕ ВОДИТЕЛЯ!" to AlertOrange
+        is AdasAlert.PedestrianDetected -> "ПЕШЕХОД НА ДОРОГЕ!" to AlertYellow
     }
     Card(
         modifier = modifier,
