@@ -32,9 +32,12 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -59,9 +62,12 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yourapp.obd.ui.theme.AccentCyan
+import com.yourapp.obd.ui.theme.AlertOrange
 import com.yourapp.obd.ui.theme.AlertRed
+import com.yourapp.obd.ui.theme.AlertYellow
 import com.yourapp.obd.ui.theme.DarkBackground
 import com.yourapp.obd.ui.theme.DarkSurface
+import com.yourapp.obd.ui.theme.GreenOk
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -78,10 +84,7 @@ fun SettingsScreen(
     val snackbarHostState = remember { SnackbarHostState() }
 
     LaunchedEffect(updateResult) {
-        updateResult?.let {
-            snackbarHostState.showSnackbar(it)
-            viewModel.clearUpdateResult()
-        }
+        updateResult?.let { snackbarHostState.showSnackbar(it); viewModel.clearUpdateResult() }
     }
 
     Scaffold(
@@ -98,11 +101,7 @@ fun SettingsScreen(
         },
         snackbarHost = {
             SnackbarHost(snackbarHostState) { data ->
-                Snackbar(
-                    snackbarData = data,
-                    containerColor = DarkSurface,
-                    contentColor = Color.White
-                )
+                Snackbar(snackbarData = data, containerColor = DarkSurface, contentColor = Color.White)
             }
         },
         containerColor = DarkBackground
@@ -115,144 +114,233 @@ fun SettingsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // ── Bluetooth OBD-II ─────────────────────────────────────────────
-            SectionCard(title = "Bluetooth OBD-II") {
-                BluetoothDeviceSelector(
-                    selectedAddress = state.selectedDeviceAddress,
-                    viewModel = viewModel
-                )
+            // ── Bluetooth ──────────────────────────────────────────────────
+            SectionCard("Bluetooth OBD-II") {
+                BluetoothDeviceSelector(state.selectedDeviceAddress, viewModel)
             }
 
-            // ── Видеорегистратор ─────────────────────────────────────────────
-            SectionCard(title = "Видеорегистратор") {
+            // ── Видеорегистратор ───────────────────────────────────────────
+            SectionCard("Видеорегистратор") {
                 DropdownSetting(
-                    label = "Разрешение видео",
+                    label   = "Разрешение видео",
                     current = state.videoResolution,
                     options = listOf("FHD" to "1080p Full HD", "HD" to "720p HD", "SD" to "480p SD"),
                     onSelect = { viewModel.setVideoResolution(it) }
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(Modifier.height(8.dp))
                 DropdownSetting(
-                    label = "Длительность ролика",
+                    label   = "Длительность ролика",
                     current = state.segmentDurationMin.toString(),
-                    options = listOf("1" to "1 мин", "3" to "3 мин", "5" to "5 мин", "10" to "10 мин", "15" to "15 мин"),
+                    options = listOf("1" to "1 мин","3" to "3 мин","5" to "5 мин","10" to "10 мин","15" to "15 мин"),
                     onSelect = { viewModel.setSegmentDurationMin(it.toInt()) }
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(Modifier.height(8.dp))
                 DropdownSetting(
-                    label = "Размер буфера",
+                    label   = "Размер буфера",
                     current = state.bufferSizeGb.toString(),
-                    options = listOf("1" to "1 ГБ", "2" to "2 ГБ", "4" to "4 ГБ", "8" to "8 ГБ", "16" to "16 ГБ"),
+                    options = listOf("1" to "1 ГБ","2" to "2 ГБ","4" to "4 ГБ","8" to "8 ГБ","16" to "16 ГБ"),
                     onSelect = { viewModel.setBufferSizeGb(it.toInt()) }
                 )
             }
 
-            // ── Базы SpeedCam ────────────────────────────────────────────────
-            SectionCard(title = "Базы камер SpeedCam") {
-                Text(
-                    text = "Источники обновления баз данных камер контроля скорости",
-                    color = Color.Gray,
-                    fontSize = 12.sp,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-
-                UrlInputField(
-                    label = "Источник 1",
-                    value = state.speedcamUrl1,
-                    onValueChange = { viewModel.setSpeedcamUrl(1, it) }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                UrlInputField(
-                    label = "Источник 2",
-                    value = state.speedcamUrl2,
-                    onValueChange = { viewModel.setSpeedcamUrl(2, it) }
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                UrlInputField(
-                    label = "Источник 3",
-                    value = state.speedcamUrl3,
-                    onValueChange = { viewModel.setSpeedcamUrl(3, it) }
-                )
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                // Последнее обновление
+            // ── Базы SpeedCam ──────────────────────────────────────────────
+            SectionCard("Базы камер SpeedCam") {
+                Text("Источники баз данных камер контроля скорости",
+                    color = Color.Gray, fontSize = 12.sp,
+                    modifier = Modifier.padding(bottom = 8.dp))
+                UrlInputField("Источник 1", state.speedcamUrl1) { viewModel.setSpeedcamUrl(1, it) }
+                Spacer(Modifier.height(8.dp))
+                UrlInputField("Источник 2", state.speedcamUrl2) { viewModel.setSpeedcamUrl(2, it) }
+                Spacer(Modifier.height(8.dp))
+                UrlInputField("Источник 3", state.speedcamUrl3) { viewModel.setSpeedcamUrl(3, it) }
+                Spacer(Modifier.height(12.dp))
                 if (state.speedcamLastUpdate > 0L) {
-                    val dateStr = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
-                        .format(Date(state.speedcamLastUpdate))
                     Text(
-                        text = "Последнее обновление: $dateStr",
-                        color = Color.Gray,
-                        fontSize = 11.sp,
+                        "Последнее обновление: ${SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date(state.speedcamLastUpdate))}",
+                        color = Color.Gray, fontSize = 11.sp,
                         modifier = Modifier.padding(bottom = 8.dp)
                     )
                 }
-
-                // Кнопка обновить
                 Button(
-                    onClick = { viewModel.updateSpeedcamDatabases() },
-                    enabled = !isUpdating,
+                    onClick  = { viewModel.updateSpeedcamDatabases() },
+                    enabled  = !isUpdating,
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentCyan,
-                        disabledContainerColor = Color.DarkGray
-                    ),
-                    shape = RoundedCornerShape(10.dp)
+                    colors   = ButtonDefaults.buttonColors(
+                        containerColor = AccentCyan, disabledContainerColor = Color.DarkGray),
+                    shape    = RoundedCornerShape(10.dp)
                 ) {
                     if (isUpdating) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
+                        CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+                        Spacer(Modifier.width(8.dp))
                         Text("Обновление...", color = Color.White)
                     } else {
-                        Icon(Icons.Default.Refresh, null, tint = Color.White,
-                            modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(8.dp))
+                        Icon(Icons.Default.Refresh, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Spacer(Modifier.width(8.dp))
                         Text("Обновить базы", color = Color.White)
                     }
                 }
             }
 
-            // ── ADAS Чувствительность ────────────────────────────────────────
-            SectionCard(title = "ADAS — Чувствительность") {
+            // ── Калибровка ADAS ────────────────────────────────────────────
+            SectionCard("Калибровка ADAS") {
+                Text(
+                    "Настройте положение горизонта и ширину полосы под вашу камеру. " +
+                    "Установите дистанции зон безопасности в метрах.",
+                    color = Color.Gray, fontSize = 12.sp,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
+
+                // Горизонт (точка схода)
+                SliderSetting(
+                    label    = "Горизонт (точка схода)",
+                    value    = state.adasHorizonPercent,
+                    valueStr = "${"%.0f".format(state.adasHorizonPercent)}% от верха",
+                    min      = 25f,
+                    max      = 65f,
+                    color    = AccentCyan,
+                    onValueChangeFinished = { viewModel.setAdasHorizon(it) }
+                )
+                Spacer(Modifier.height(4.dp))
+
+                // Ширина полосы
+                SliderSetting(
+                    label    = "Ширина полосы",
+                    value    = state.adasLaneWidthPercent,
+                    valueStr = "${"%.0f".format(state.adasLaneWidthPercent)}% ширины экрана",
+                    min      = 10f,
+                    max      = 45f,
+                    color    = GreenOk,
+                    onValueChangeFinished = { viewModel.setAdasLaneWidth(it) }
+                )
+                Spacer(Modifier.height(12.dp))
+
+                // Зоны дистанций
+                Text("Зоны дистанций", color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                Spacer(Modifier.height(8.dp))
+
+                DistanceZoneRow("ОПАСНОСТЬ", state.adasDangerDistM,  AlertRed,    1..15)  { viewModel.setAdasDangerDist(it) }
+                DistanceZoneRow("ВНИМАНИЕ",  state.adasWarningDistM, AlertOrange, 5..25)  { viewModel.setAdasWarningDist(it) }
+                DistanceZoneRow("ОСТОРОЖНО", state.adasCautionDistM, AlertYellow, 10..40) { viewModel.setAdasCautionDist(it) }
+                DistanceZoneRow("БЕЗОПАСНО", state.adasSafeDistM,    GreenOk,    20..60) { viewModel.setAdasSafeDist(it) }
+
+                Spacer(Modifier.height(12.dp))
+
+                OutlinedButton(
+                    onClick  = { viewModel.resetAdasCalibration() },
+                    modifier = Modifier.fillMaxWidth(),
+                    shape    = RoundedCornerShape(10.dp),
+                    border   = androidx.compose.foundation.BorderStroke(1.dp, Color.DarkGray)
+                ) {
+                    Text("Сбросить калибровку по умолчанию", color = Color.Gray, fontSize = 13.sp)
+                }
+            }
+
+            // ── ADAS модули ────────────────────────────────────────────────
+            SectionCard("ADAS — Чувствительность") {
                 DropdownSetting(
-                    label = "Чувствительность",
+                    label   = "Чувствительность",
                     current = state.adasSensitivity,
-                    options = listOf("LOW" to "Низкая", "MEDIUM" to "Средняя", "HIGH" to "Высокая"),
+                    options = listOf("LOW" to "Низкая","MEDIUM" to "Средняя","HIGH" to "Высокая"),
                     onSelect = { viewModel.setAdasSensitivity(it) }
                 )
             }
 
-            // ── ADAS Модули ──────────────────────────────────────────────────
-            SectionCard(title = "ADAS — Модули") {
-                SettingsSwitch("LDW — Выезд из полосы", state.ldwEnabled) { viewModel.setLdwEnabled(it) }
-                SettingsSwitch("FCW — Предупреждение о столкновении", state.fcwEnabled) { viewModel.setFcwEnabled(it) }
-                SettingsSwitch("Детекция знаков скорости", state.signEnabled) { viewModel.setSignEnabled(it) }
-                SettingsSwitch("DMS — Усталость водителя", state.dmsEnabled) { viewModel.setDmsEnabled(it) }
-                SettingsSwitch("Детекция пешеходов", state.pedestrianEnabled) { viewModel.setPedestrianEnabled(it) }
+            SectionCard("ADAS — Модули") {
+                SettingsSwitch("LDW — Выезд из полосы",             state.ldwEnabled)        { viewModel.setLdwEnabled(it) }
+                SettingsSwitch("FCW — Предупреждение о столкновении", state.fcwEnabled)       { viewModel.setFcwEnabled(it) }
+                SettingsSwitch("Детекция знаков скорости",           state.signEnabled)       { viewModel.setSignEnabled(it) }
+                SettingsSwitch("DMS — Усталость водителя",           state.dmsEnabled)        { viewModel.setDmsEnabled(it) }
+                SettingsSwitch("Детекция пешеходов",                 state.pedestrianEnabled) { viewModel.setPedestrianEnabled(it) }
             }
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(Modifier.height(16.dp))
         }
     }
 }
 
-// ── Компоненты ────────────────────────────────────────────────────────────────
+// ── Компоненты ─────────────────────────────────────────────────────────────
 
 @Composable
 private fun SectionCard(title: String, content: @Composable () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = DarkSurface),
-        shape = RoundedCornerShape(12.dp)
+        colors   = CardDefaults.cardColors(containerColor = DarkSurface),
+        shape    = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(title, color = AccentCyan, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(Modifier.height(12.dp))
             content()
+        }
+    }
+}
+
+@Composable
+private fun SliderSetting(
+    label: String,
+    value: Float,
+    valueStr: String,
+    min: Float,
+    max: Float,
+    color: Color,
+    onValueChangeFinished: (Float) -> Unit
+) {
+    var sliderVal by remember(value) { mutableStateOf(value) }
+    Column {
+        Row(Modifier.fillMaxWidth(), Arrangement.SpaceBetween, Alignment.CenterVertically) {
+            Text(label, color = Color.White, fontSize = 13.sp)
+            Text(valueStr, color = color, fontSize = 12.sp, fontWeight = FontWeight.Medium)
+        }
+        Slider(
+            value          = sliderVal,
+            onValueChange  = { sliderVal = it },
+            onValueChangeFinished = { onValueChangeFinished(sliderVal) },
+            valueRange     = min..max,
+            modifier       = Modifier.fillMaxWidth(),
+            colors         = SliderDefaults.colors(
+                thumbColor       = color,
+                activeTrackColor = color,
+                inactiveTrackColor = color.copy(alpha = 0.25f)
+            )
+        )
+    }
+}
+
+@Composable
+private fun DistanceZoneRow(
+    label: String,
+    value: Int,
+    color: Color,
+    range: IntRange,
+    onSelect: (Int) -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = true }
+                .padding(vertical = 6.dp),
+            Arrangement.SpaceBetween,
+            Alignment.CenterVertically
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(modifier = Modifier
+                    .size(10.dp)
+                    .background(color, androidx.compose.foundation.shape.CircleShape))
+                Spacer(Modifier.width(8.dp))
+                Text(label, color = Color.White, fontSize = 13.sp)
+            }
+            Text("$value м", color = color, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        }
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false },
+            modifier = Modifier.background(DarkSurface)) {
+            range.step(if (range.last > 30) 5 else if (range.last > 15) 2 else 1).forEach { m ->
+                DropdownMenuItem(
+                    text    = { Text("$m м", color = if (m == value) color else Color.White) },
+                    onClick = { onSelect(m); expanded = false }
+                )
+            }
         }
     }
 }
@@ -261,38 +349,25 @@ private fun SectionCard(title: String, content: @Composable () -> Unit) {
 private fun DropdownSetting(
     label: String,
     current: String,
-    options: List<Pair<String, String>>,  // value to displayLabel
+    options: List<Pair<String, String>>,
     onSelect: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val displayLabel = options.firstOrNull { it.first == current }?.second ?: current
-
+    val display = options.firstOrNull { it.first == current }?.second ?: current
     Box {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable { expanded = true }
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            modifier = Modifier.fillMaxWidth().clickable { expanded = true }.padding(vertical = 8.dp),
+            Arrangement.SpaceBetween, Alignment.CenterVertically
         ) {
             Text(label, color = Color.White, fontSize = 14.sp)
-            Text(displayLabel, color = AccentCyan, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+            Text(display, color = AccentCyan, fontSize = 13.sp, fontWeight = FontWeight.Medium)
         }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.background(DarkSurface)
-        ) {
-            options.forEach { (value, display) ->
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false },
+            modifier = Modifier.background(DarkSurface)) {
+            options.forEach { (v, d) ->
                 DropdownMenuItem(
-                    text = {
-                        Text(
-                            display,
-                            color = if (value == current) AccentCyan else Color.White
-                        )
-                    },
-                    onClick = { onSelect(value); expanded = false }
+                    text    = { Text(d, color = if (v == current) AccentCyan else Color.White) },
+                    onClick = { onSelect(v); expanded = false }
                 )
             }
         }
@@ -300,86 +375,56 @@ private fun DropdownSetting(
 }
 
 @Composable
-private fun UrlInputField(
-    label: String,
-    value: String,
-    onValueChange: (String) -> Unit
-) {
+private fun UrlInputField(label: String, value: String, onValueChange: (String) -> Unit) {
     var text by remember(value) { mutableStateOf(value) }
-
     OutlinedTextField(
-        value = text,
+        value         = text,
         onValueChange = { text = it },
-        label = { Text(label, fontSize = 12.sp) },
-        placeholder = { Text("https://...", color = Color.DarkGray, fontSize = 12.sp) },
-        modifier = Modifier.fillMaxWidth(),
-        singleLine = true,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = AccentCyan,
-            unfocusedBorderColor = Color.DarkGray,
-            focusedLabelColor = AccentCyan,
-            unfocusedLabelColor = Color.Gray,
-            focusedTextColor = Color.White,
-            unfocusedTextColor = Color.White,
-            cursorColor = AccentCyan
+        label         = { Text(label, fontSize = 12.sp) },
+        placeholder   = { Text("https://...", color = Color.DarkGray, fontSize = 12.sp) },
+        modifier      = Modifier.fillMaxWidth(),
+        singleLine    = true,
+        colors        = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor   = AccentCyan, unfocusedBorderColor = Color.DarkGray,
+            focusedLabelColor    = AccentCyan, unfocusedLabelColor  = Color.Gray,
+            focusedTextColor     = Color.White, unfocusedTextColor  = Color.White,
+            cursorColor          = AccentCyan
         ),
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
         keyboardActions = KeyboardActions(onDone = { onValueChange(text) }),
-        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp)
+        textStyle       = androidx.compose.ui.text.TextStyle(fontSize = 12.sp)
     )
 }
 
 @Composable
-private fun BluetoothDeviceSelector(
-    selectedAddress: String,
-    viewModel: SettingsViewModel
-) {
+private fun BluetoothDeviceSelector(selectedAddress: String, viewModel: SettingsViewModel) {
     var expanded by remember { mutableStateOf(false) }
-    var devices by remember { mutableStateOf<List<BluetoothDevice>>(emptyList()) }
-
+    var devices  by remember { mutableStateOf<List<BluetoothDevice>>(emptyList()) }
     Box {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clickable {
-                    try {
-                        devices = viewModel.getPairedDevices()
-                        expanded = true
-                    } catch (_: SecurityException) {}
-                }
+            modifier = Modifier.fillMaxWidth()
+                .clickable { try { devices = viewModel.getPairedDevices(); expanded = true } catch (_: SecurityException) {} }
                 .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+            Arrangement.SpaceBetween, Alignment.CenterVertically
         ) {
             Text("Устройство ELM327", color = Color.White, fontSize = 14.sp)
-            Text(
-                text = if (selectedAddress.isBlank()) "Не выбрано" else selectedAddress,
-                color = AccentCyan,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Medium
-            )
+            Text(if (selectedAddress.isBlank()) "Не выбрано" else selectedAddress,
+                color = AccentCyan, fontSize = 12.sp, fontWeight = FontWeight.Medium)
         }
-        DropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false },
-            modifier = Modifier.background(DarkSurface)
-        ) {
+        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false },
+            modifier = Modifier.background(DarkSurface)) {
             if (devices.isEmpty()) {
-                DropdownMenuItem(
-                    text = { Text("Нет сопряжённых устройств", color = Color.Gray) },
-                    onClick = { expanded = false }
-                )
+                DropdownMenuItem(text = { Text("Нет сопряжённых устройств", color = Color.Gray) },
+                    onClick = { expanded = false })
             }
-            devices.forEach { device ->
-                val name = try { device.name ?: "Неизвестно" } catch (_: SecurityException) { "Неизвестно" }
+            devices.forEach { dev ->
+                val name = try { dev.name ?: "Неизвестно" } catch (_: SecurityException) { "Неизвестно" }
                 DropdownMenuItem(
-                    text = {
-                        Column {
-                            Text(name, color = Color.White, fontSize = 13.sp)
-                            Text(device.address, color = Color.Gray, fontSize = 11.sp)
-                        }
-                    },
-                    onClick = { viewModel.selectDevice(device.address); expanded = false }
+                    text = { Column {
+                        Text(name, color = Color.White, fontSize = 13.sp)
+                        Text(dev.address, color = Color.Gray, fontSize = 11.sp)
+                    }},
+                    onClick = { viewModel.selectDevice(dev.address); expanded = false }
                 )
             }
         }
@@ -389,21 +434,15 @@ private fun BluetoothDeviceSelector(
 @Composable
 private fun SettingsSwitch(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
     Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+        modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+        Arrangement.SpaceBetween, Alignment.CenterVertically
     ) {
         Text(label, color = Color.White, fontSize = 13.sp, modifier = Modifier.weight(1f))
-        Spacer(modifier = Modifier.width(8.dp))
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
+        Spacer(Modifier.width(8.dp))
+        Switch(checked = checked, onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = AccentCyan,
-                checkedTrackColor = AccentCyan.copy(alpha = 0.4f)
-            )
-        )
+                checkedThumbColor  = AccentCyan,
+                checkedTrackColor  = AccentCyan.copy(alpha = 0.4f)
+            ))
     }
 }
