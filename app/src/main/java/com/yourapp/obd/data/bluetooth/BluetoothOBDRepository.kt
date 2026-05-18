@@ -77,22 +77,15 @@ class BluetoothOBDRepositoryImpl @Inject constructor(
                 continue
             }
             try {
-                val rpm = queryRpm(proto)
-                delay(100)
-                val speed = querySpeed(proto)
-                delay(100)
-                val coolant = queryCoolant(proto)
-                delay(100)
-                val map = queryMap(proto)
-                delay(100)
-                val iat = queryIat(proto)
-                delay(100)
-                val throttle = queryThrottle(proto)
-                delay(100)
-                val fuel = queryFuel(proto)
-                delay(100)
-                val timing = queryTiming(proto)
-                delay(100)
+                val rpm = queryRpm(proto);     delay(80)
+                val speed = querySpeed(proto); delay(80)
+                val coolant = queryCoolant(proto); delay(80)
+                val map = queryMap(proto);     delay(80)
+                val iat = queryIat(proto);     delay(80)
+                val throttle = queryThrottle(proto); delay(80)
+                val fuel = queryFuel(proto);   delay(80)
+                val timing = queryTiming(proto); delay(80)
+                val voltage = queryVoltage(proto); delay(80)
                 emit(
                     OBDData(
                         rpm = rpm,
@@ -102,7 +95,8 @@ class BluetoothOBDRepositoryImpl @Inject constructor(
                         intakeAirTempC = iat,
                         throttlePercent = throttle,
                         fuelLevelPercent = fuel,
-                        timingAdvanceDeg = timing
+                        timingAdvanceDeg = timing,
+                        voltageV = voltage
                     )
                 )
             } catch (e: Exception) {
@@ -126,57 +120,57 @@ class BluetoothOBDRepositoryImpl @Inject constructor(
 
     private suspend fun queryRpm(proto: ELM327Protocol): Int? {
         val r = proto.sendCommandWithRetry("010C") ?: return null
-        val bytes = proto.parseObdResponse(r) ?: return null
-        if (bytes.size < 4) return null
-        return ((bytes[2] * 256) + bytes[3]) / 4
+        val b = proto.parseObdResponse(r) ?: return null
+        if (b.size < 4) return null
+        return ((b[2] * 256) + b[3]) / 4
     }
-
     private suspend fun querySpeed(proto: ELM327Protocol): Int? {
         val r = proto.sendCommandWithRetry("010D") ?: return null
-        val bytes = proto.parseObdResponse(r) ?: return null
-        if (bytes.size < 3) return null
-        return bytes[2]
+        val b = proto.parseObdResponse(r) ?: return null
+        if (b.size < 3) return null
+        return b[2]
     }
-
     private suspend fun queryCoolant(proto: ELM327Protocol): Int? {
         val r = proto.sendCommandWithRetry("0105") ?: return null
-        val bytes = proto.parseObdResponse(r) ?: return null
-        if (bytes.size < 3) return null
-        return bytes[2] - 40
+        val b = proto.parseObdResponse(r) ?: return null
+        if (b.size < 3) return null
+        return b[2] - 40
     }
-
     private suspend fun queryMap(proto: ELM327Protocol): Int? {
         val r = proto.sendCommandWithRetry("010B") ?: return null
-        val bytes = proto.parseObdResponse(r) ?: return null
-        if (bytes.size < 3) return null
-        return bytes[2]
+        val b = proto.parseObdResponse(r) ?: return null
+        if (b.size < 3) return null
+        return b[2]
     }
-
     private suspend fun queryIat(proto: ELM327Protocol): Int? {
         val r = proto.sendCommandWithRetry("010F") ?: return null
-        val bytes = proto.parseObdResponse(r) ?: return null
-        if (bytes.size < 3) return null
-        return bytes[2] - 40
+        val b = proto.parseObdResponse(r) ?: return null
+        if (b.size < 3) return null
+        return b[2] - 40
     }
-
     private suspend fun queryThrottle(proto: ELM327Protocol): Float? {
         val r = proto.sendCommandWithRetry("0111") ?: return null
-        val bytes = proto.parseObdResponse(r) ?: return null
-        if (bytes.size < 3) return null
-        return bytes[2] * 100f / 255f
+        val b = proto.parseObdResponse(r) ?: return null
+        if (b.size < 3) return null
+        return b[2] * 100f / 255f
     }
-
     private suspend fun queryFuel(proto: ELM327Protocol): Float? {
         val r = proto.sendCommandWithRetry("012F") ?: return null
-        val bytes = proto.parseObdResponse(r) ?: return null
-        if (bytes.size < 3) return null
-        return bytes[2] * 100f / 255f
+        val b = proto.parseObdResponse(r) ?: return null
+        if (b.size < 3) return null
+        return b[2] * 100f / 255f
     }
-
     private suspend fun queryTiming(proto: ELM327Protocol): Float? {
         val r = proto.sendCommandWithRetry("010E") ?: return null
-        val bytes = proto.parseObdResponse(r) ?: return null
-        if (bytes.size < 3) return null
-        return bytes[2] / 2f - 64f
+        val b = proto.parseObdResponse(r) ?: return null
+        if (b.size < 3) return null
+        return b[2] / 2f - 64f
+    }
+    // PID 0142 — напряжение модуля управления (бортовая сеть)
+    private suspend fun queryVoltage(proto: ELM327Protocol): Float? {
+        val r = proto.sendCommandWithRetry("0142") ?: return null
+        val b = proto.parseObdResponse(r) ?: return null
+        if (b.size < 4) return null
+        return ((b[2] * 256) + b[3]) / 1000f
     }
 }

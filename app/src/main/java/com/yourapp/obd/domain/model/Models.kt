@@ -8,7 +8,8 @@ data class OBDData(
     val intakeAirTempC: Int? = null,
     val throttlePercent: Float? = null,
     val fuelLevelPercent: Float? = null,
-    val timingAdvanceDeg: Float? = null
+    val timingAdvanceDeg: Float? = null,
+    val voltageV: Float? = null
 )
 
 enum class AlertLevel { CAUTION, WARNING, DANGER }
