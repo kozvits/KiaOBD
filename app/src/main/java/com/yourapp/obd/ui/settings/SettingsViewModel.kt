@@ -8,6 +8,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -183,7 +184,7 @@ class SettingsViewModel @Inject constructor(
 
     fun clearUpdateResult() { _speedcamUpdateResult.value = null }
 
-    private fun save(block: (Preferences.MutablePreferences) -> Unit) {
+    private fun save(block: (MutablePreferences) -> Unit) {
         viewModelScope.launch { dataStore.edit(block) }
     }
 }
