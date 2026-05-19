@@ -8,6 +8,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.ViewModel
@@ -37,7 +38,15 @@ data class SettingsState(
     val signEnabled: Boolean = true,
     val dmsEnabled: Boolean = true,
     val pedestrianEnabled: Boolean = true,
-    val speedcamUrl1: String = "https://raw.githubusercontent.com/jonatkins/ingress-intel-total-conversion/master/cameras.json",
+    // Калибровка ADAS
+    val horizonPosition: Float = 0.42f,     // 0.0..1.0 — позиция горизонта
+    val laneWidthPercent: Float = 0.28f,    // 0.1..0.5 — ширина полосы у основания
+    val vanishingPointX: Float = 0.5f,      // 0.0..1.0 — смещение точки схода по X
+    val dangerZoneM: Int = 5,               // метры для зоны DANGER
+    val warningZoneM: Int = 10,             // метры для зоны WARNING
+    val cautionZoneM: Int = 20,             // метры для зоны CAUTION
+    // SpeedCam
+    val speedcamUrl1: String = "",
     val speedcamUrl2: String = "",
     val speedcamUrl3: String = "",
     val speedcamLastUpdate: Long = 0L
@@ -53,38 +62,52 @@ class SettingsViewModel @Inject constructor(
 ) : ViewModel() {
 
     companion object {
-        val KEY_DEVICE_ADDRESS      = stringPreferencesKey("device_address")
-        val KEY_BUFFER_SIZE_GB      = intPreferencesKey("buffer_size_gb")
-        val KEY_VIDEO_RESOLUTION    = stringPreferencesKey("video_resolution")
-        val KEY_SEGMENT_DURATION    = intPreferencesKey("segment_duration_min")
-        val KEY_ADAS_SENSITIVITY    = stringPreferencesKey("adas_sensitivity")
-        val KEY_LDW                 = booleanPreferencesKey("ldw_enabled")
-        val KEY_FCW                 = booleanPreferencesKey("fcw_enabled")
-        val KEY_SIGN                = booleanPreferencesKey("sign_enabled")
-        val KEY_DMS                 = booleanPreferencesKey("dms_enabled")
-        val KEY_PEDESTRIAN          = booleanPreferencesKey("pedestrian_enabled")
-        val KEY_SPEEDCAM_URL1       = stringPreferencesKey("speedcam_url1")
-        val KEY_SPEEDCAM_URL2       = stringPreferencesKey("speedcam_url2")
-        val KEY_SPEEDCAM_URL3       = stringPreferencesKey("speedcam_url3")
-        val KEY_SPEEDCAM_LAST_UPD   = stringPreferencesKey("speedcam_last_update")
+        val KEY_DEVICE_ADDRESS    = stringPreferencesKey("device_address")
+        val KEY_BUFFER_SIZE_GB    = intPreferencesKey("buffer_size_gb")
+        val KEY_VIDEO_RESOLUTION  = stringPreferencesKey("video_resolution")
+        val KEY_SEGMENT_DURATION  = intPreferencesKey("segment_duration_min")
+        val KEY_ADAS_SENSITIVITY  = stringPreferencesKey("adas_sensitivity")
+        val KEY_LDW               = booleanPreferencesKey("ldw_enabled")
+        val KEY_FCW               = booleanPreferencesKey("fcw_enabled")
+        val KEY_SIGN              = booleanPreferencesKey("sign_enabled")
+        val KEY_DMS               = booleanPreferencesKey("dms_enabled")
+        val KEY_PEDESTRIAN        = booleanPreferencesKey("pedestrian_enabled")
+        // Калибровка
+        val KEY_HORIZON           = floatPreferencesKey("adas_horizon")
+        val KEY_LANE_WIDTH        = floatPreferencesKey("adas_lane_width")
+        val KEY_VP_X              = floatPreferencesKey("adas_vp_x")
+        val KEY_DANGER_M          = intPreferencesKey("adas_danger_m")
+        val KEY_WARNING_M         = intPreferencesKey("adas_warning_m")
+        val KEY_CAUTION_M         = intPreferencesKey("adas_caution_m")
+        // SpeedCam
+        val KEY_SPEEDCAM_URL1     = stringPreferencesKey("speedcam_url1")
+        val KEY_SPEEDCAM_URL2     = stringPreferencesKey("speedcam_url2")
+        val KEY_SPEEDCAM_URL3     = stringPreferencesKey("speedcam_url3")
+        val KEY_SPEEDCAM_LAST_UPD = stringPreferencesKey("speedcam_last_update")
     }
 
-    val settingsState = dataStore.data.map { prefs ->
+    val settingsState = dataStore.data.map { p ->
         SettingsState(
-            selectedDeviceAddress  = prefs[KEY_DEVICE_ADDRESS] ?: "",
-            bufferSizeGb           = prefs[KEY_BUFFER_SIZE_GB] ?: 4,
-            videoResolution        = prefs[KEY_VIDEO_RESOLUTION] ?: "FHD",
-            segmentDurationMin     = prefs[KEY_SEGMENT_DURATION] ?: 5,
-            adasSensitivity        = prefs[KEY_ADAS_SENSITIVITY] ?: "MEDIUM",
-            ldwEnabled             = prefs[KEY_LDW] ?: true,
-            fcwEnabled             = prefs[KEY_FCW] ?: true,
-            signEnabled            = prefs[KEY_SIGN] ?: true,
-            dmsEnabled             = prefs[KEY_DMS] ?: true,
-            pedestrianEnabled      = prefs[KEY_PEDESTRIAN] ?: true,
-            speedcamUrl1           = prefs[KEY_SPEEDCAM_URL1] ?: "https://raw.githubusercontent.com/jonatkins/ingress-intel-total-conversion/master/cameras.json",
-            speedcamUrl2           = prefs[KEY_SPEEDCAM_URL2] ?: "",
-            speedcamUrl3           = prefs[KEY_SPEEDCAM_URL3] ?: "",
-            speedcamLastUpdate     = prefs[KEY_SPEEDCAM_LAST_UPD]?.toLongOrNull() ?: 0L
+            selectedDeviceAddress = p[KEY_DEVICE_ADDRESS]   ?: "",
+            bufferSizeGb          = p[KEY_BUFFER_SIZE_GB]   ?: 4,
+            videoResolution       = p[KEY_VIDEO_RESOLUTION]  ?: "FHD",
+            segmentDurationMin    = p[KEY_SEGMENT_DURATION]  ?: 5,
+            adasSensitivity       = p[KEY_ADAS_SENSITIVITY]  ?: "MEDIUM",
+            ldwEnabled            = p[KEY_LDW]               ?: true,
+            fcwEnabled            = p[KEY_FCW]               ?: true,
+            signEnabled           = p[KEY_SIGN]              ?: true,
+            dmsEnabled            = p[KEY_DMS]               ?: true,
+            pedestrianEnabled     = p[KEY_PEDESTRIAN]        ?: true,
+            horizonPosition       = p[KEY_HORIZON]           ?: 0.42f,
+            laneWidthPercent      = p[KEY_LANE_WIDTH]        ?: 0.28f,
+            vanishingPointX       = p[KEY_VP_X]              ?: 0.5f,
+            dangerZoneM           = p[KEY_DANGER_M]          ?: 5,
+            warningZoneM          = p[KEY_WARNING_M]         ?: 10,
+            cautionZoneM          = p[KEY_CAUTION_M]         ?: 20,
+            speedcamUrl1          = p[KEY_SPEEDCAM_URL1]     ?: "",
+            speedcamUrl2          = p[KEY_SPEEDCAM_URL2]     ?: "",
+            speedcamUrl3          = p[KEY_SPEEDCAM_URL3]     ?: "",
+            speedcamLastUpdate    = p[KEY_SPEEDCAM_LAST_UPD]?.toLongOrNull() ?: 0L
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsState())
 
@@ -95,84 +118,36 @@ class SettingsViewModel @Inject constructor(
     val speedcamUpdateResult: StateFlow<String?> = _speedcamUpdateResult.asStateFlow()
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
-    fun getPairedDevices(): List<BluetoothDevice> =
-        obdRepository.getPairedDevices().toList()
+    fun getPairedDevices(): List<BluetoothDevice> = obdRepository.getPairedDevices().toList()
 
-    fun selectDevice(address: String) {
-        viewModelScope.launch {
-            dataStore.edit { it[KEY_DEVICE_ADDRESS] = address }
-        }
-    }
-
+    fun selectDevice(address: String) = save { it[KEY_DEVICE_ADDRESS] = address }
     fun setBufferSizeGb(gb: Int) {
-        viewModelScope.launch {
-            dataStore.edit { it[KEY_BUFFER_SIZE_GB] = gb }
-            cameraRepository.setMaxBufferBytes(gb.toLong() * 1024 * 1024 * 1024)
-        }
+        save { it[KEY_BUFFER_SIZE_GB] = gb }
+        viewModelScope.launch { cameraRepository.setMaxBufferBytes(gb.toLong() * 1024 * 1024 * 1024) }
     }
+    fun setVideoResolution(r: String)    = save { it[KEY_VIDEO_RESOLUTION]  = r }
+    fun setSegmentDurationMin(m: Int)    = save { it[KEY_SEGMENT_DURATION]  = m }
+    fun setAdasSensitivity(s: String)    = save { it[KEY_ADAS_SENSITIVITY]  = s }
+    fun setLdwEnabled(v: Boolean)        { save { it[KEY_LDW]       = v }; adasAnalyzer.ldwEnabled           = v }
+    fun setFcwEnabled(v: Boolean)        { save { it[KEY_FCW]       = v }; adasAnalyzer.fcwEnabled           = v }
+    fun setSignEnabled(v: Boolean)       { save { it[KEY_SIGN]      = v }; adasAnalyzer.signDetectionEnabled = v }
+    fun setDmsEnabled(v: Boolean)        { save { it[KEY_DMS]       = v }; adasAnalyzer.dmsEnabled           = v }
+    fun setPedestrianEnabled(v: Boolean) { save { it[KEY_PEDESTRIAN]= v }; adasAnalyzer.pedestrianEnabled    = v }
 
-    fun setVideoResolution(resolution: String) {
-        viewModelScope.launch {
-            dataStore.edit { it[KEY_VIDEO_RESOLUTION] = resolution }
-        }
-    }
+    // Калибровка ADAS
+    fun setHorizonPosition(v: Float)   = save { it[KEY_HORIZON]    = v.coerceIn(0.2f, 0.7f) }
+    fun setLaneWidthPercent(v: Float)  = save { it[KEY_LANE_WIDTH] = v.coerceIn(0.1f, 0.5f) }
+    fun setVanishingPointX(v: Float)   = save { it[KEY_VP_X]       = v.coerceIn(0.2f, 0.8f) }
+    fun setDangerZoneM(m: Int)         = save { it[KEY_DANGER_M]   = m }
+    fun setWarningZoneM(m: Int)        = save { it[KEY_WARNING_M]  = m }
+    fun setCautionZoneM(m: Int)        = save { it[KEY_CAUTION_M]  = m }
 
-    fun setSegmentDurationMin(minutes: Int) {
-        viewModelScope.launch {
-            dataStore.edit { it[KEY_SEGMENT_DURATION] = minutes }
-        }
-    }
-
-    fun setAdasSensitivity(sensitivity: String) {
-        viewModelScope.launch {
-            dataStore.edit { it[KEY_ADAS_SENSITIVITY] = sensitivity }
-        }
-    }
-
-    fun setLdwEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            dataStore.edit { it[KEY_LDW] = enabled }
-            adasAnalyzer.ldwEnabled = enabled
-        }
-    }
-
-    fun setFcwEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            dataStore.edit { it[KEY_FCW] = enabled }
-            adasAnalyzer.fcwEnabled = enabled
-        }
-    }
-
-    fun setSignEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            dataStore.edit { it[KEY_SIGN] = enabled }
-            adasAnalyzer.signDetectionEnabled = enabled
-        }
-    }
-
-    fun setDmsEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            dataStore.edit { it[KEY_DMS] = enabled }
-            adasAnalyzer.dmsEnabled = enabled
-        }
-    }
-
-    fun setPedestrianEnabled(enabled: Boolean) {
-        viewModelScope.launch {
-            dataStore.edit { it[KEY_PEDESTRIAN] = enabled }
-            adasAnalyzer.pedestrianEnabled = enabled
-        }
-    }
-
-    fun setSpeedcamUrl(index: Int, url: String) {
-        viewModelScope.launch {
-            dataStore.edit {
-                when (index) {
-                    1 -> it[KEY_SPEEDCAM_URL1] = url
-                    2 -> it[KEY_SPEEDCAM_URL2] = url
-                    3 -> it[KEY_SPEEDCAM_URL3] = url
-                }
-            }
+    // SpeedCam
+    fun setSpeedcamUrl(index: Int, url: String) = save {
+        when (index) {
+            1 -> it[KEY_SPEEDCAM_URL1] = url
+            2 -> it[KEY_SPEEDCAM_URL2] = url
+            3 -> it[KEY_SPEEDCAM_URL3] = url
         }
     }
 
@@ -180,52 +155,35 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             _isUpdatingSpeedcam.value = true
             _speedcamUpdateResult.value = null
-            val state = settingsState.value
-            val urls = listOf(state.speedcamUrl1, state.speedcamUrl2, state.speedcamUrl3)
-                .filter { it.isNotBlank() }
-
+            val s = settingsState.value
+            val urls = listOf(s.speedcamUrl1, s.speedcamUrl2, s.speedcamUrl3).filter { it.isNotBlank() }
             if (urls.isEmpty()) {
                 _speedcamUpdateResult.value = "Нет источников для обновления"
                 _isUpdatingSpeedcam.value = false
                 return@launch
             }
-
-            var successCount = 0
-            var errorCount = 0
+            var ok = 0; var err = 0
             for (url in urls) {
                 try {
-                    val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
-                    connection.connectTimeout = 10_000
-                    connection.readTimeout = 15_000
-                    connection.requestMethod = "GET"
-                    val code = connection.responseCode
-                    if (code == 200) {
-                        // Читаем данные — в реальном проекте парсим и сохраняем в БД
-                        val bytes = connection.inputStream.readBytes()
-                        connection.disconnect()
-                        successCount++
-                    } else {
-                        connection.disconnect()
-                        errorCount++
-                    }
-                } catch (e: Exception) {
-                    errorCount++
-                }
+                    val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+                    conn.connectTimeout = 10_000; conn.readTimeout = 15_000
+                    if (conn.responseCode == 200) { conn.inputStream.readBytes(); ok++ } else err++
+                    conn.disconnect()
+                } catch (_: Exception) { err++ }
             }
-
-            val now = System.currentTimeMillis()
-            dataStore.edit { it[KEY_SPEEDCAM_LAST_UPD] = now.toString() }
-
+            save { it[KEY_SPEEDCAM_LAST_UPD] = System.currentTimeMillis().toString() }
             _speedcamUpdateResult.value = when {
-                errorCount == 0 -> "Обновлено: $successCount источников"
-                successCount == 0 -> "Ошибка обновления всех источников"
-                else -> "Обновлено: $successCount, ошибок: $errorCount"
+                err == 0  -> "Обновлено: $ok источников"
+                ok == 0   -> "Ошибка обновления всех источников"
+                else      -> "Обновлено: $ok, ошибок: $err"
             }
             _isUpdatingSpeedcam.value = false
         }
     }
 
-    fun clearUpdateResult() {
-        _speedcamUpdateResult.value = null
+    fun clearUpdateResult() { _speedcamUpdateResult.value = null }
+
+    private fun save(block: (Preferences.MutablePreferences) -> Unit) {
+        viewModelScope.launch { dataStore.edit(block) }
     }
 }
