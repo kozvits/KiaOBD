@@ -61,6 +61,7 @@ fun DvrAdasScreen(
         AlertLevel.CAUTION -> Color(0x44FFEA00)
         null               -> null
     }
+    val maxDist = (calibration.dangerZoneM + calibration.warningZoneM + calibration.cautionZoneM).coerceAtLeast(1)
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
 
@@ -77,6 +78,9 @@ fun DvrAdasScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .drawBehind {
+                    val dangerT  = calibration.dangerZoneM.toFloat() / maxDist
+                    val warningT = (calibration.dangerZoneM + calibration.warningZoneM).toFloat() / maxDist
+                    val cautionT = (calibration.dangerZoneM + calibration.warningZoneM + calibration.cautionZoneM).toFloat() / maxDist
                     drawAdasGrid(
                         laneColor    = laneColor,
                         fcwColor     = fcwColor,
@@ -85,7 +89,10 @@ fun DvrAdasScreen(
                         vpXRatio     = calibration.vanishingPointX,
                         dangerM      = calibration.dangerZoneM,
                         warningM     = calibration.warningZoneM,
-                        cautionM     = calibration.cautionZoneM
+                        cautionM     = calibration.cautionZoneM,
+                        dangerT      = dangerT,
+                        warningT     = warningT,
+                        cautionT     = cautionT
                     )
                 }
         )
@@ -192,7 +199,10 @@ fun DrawScope.drawAdasGrid(
     vpXRatio:   Float,
     dangerM:    Int,
     warningM:   Int,
-    cautionM:   Int
+    cautionM:   Int,
+    dangerT:    Float = 0.20f,
+    warningT:   Float = 0.42f,
+    cautionT:   Float = 0.68f
 ) {
     val w  = size.width
     val h  = size.height
@@ -207,13 +217,13 @@ fun DrawScope.drawAdasGrid(
     fun lp(t: Float) = Offset(leftBase.x  + (vpX - leftBase.x)  * t, h + (vpY - h) * t)
     fun rp(t: Float) = Offset(rightBase.x + (vpX - rightBase.x) * t, h + (vpY - h) * t)
 
-    // Зоны (t границы): DANGER=0..0.20, WARNING=0.20..0.42, CAUTION=0.42..0.68, SAFE=0.68..1.0
+    // Зоны (t границы) вычисляются из настроек дистанции
     data class Zone(val tNear: Float, val tFar: Float, val baseColor: Color, val label: String, val meters: Int)
     val zones = listOf(
-        Zone(0.00f, 0.20f, Color(0x66FF1744), "●  ${dangerM} м",  dangerM),
-        Zone(0.20f, 0.42f, Color(0x55FF6D00), "●  ${warningM} м", warningM),
-        Zone(0.42f, 0.68f, Color(0x44FFEA00), "●  ${cautionM} м", cautionM),
-        Zone(0.68f, 1.00f, Color(0x2200E676), "БЕЗОПАСНО",         0)
+        Zone(0.00f, dangerT, Color(0x66FF1744), "●  ${dangerM} м",  dangerM),
+        Zone(dangerT, warningT, Color(0x55FF6D00), "●  ${warningM} м", warningM),
+        Zone(warningT, cautionT, Color(0x44FFEA00), "●  ${cautionM} м", cautionM),
+        Zone(cautionT, 1.00f, Color(0x2200E676), "БЕЗОПАСНО",         0)
     )
 
     // Заливка зон
@@ -230,9 +240,9 @@ fun DrawScope.drawAdasGrid(
 
     // Горизонтальные линии расстояний с подписями
     val distLines = listOf(
-        Triple(0.20f, "${dangerM} м",  Color(0xCCFF1744)),
-        Triple(0.42f, "${warningM} м", Color(0xCCFF6D00)),
-        Triple(0.68f, "${cautionM} м", Color(0xCCFFEA00))
+        Triple(dangerT, "${dangerM} м",  Color(0xCCFF1744)),
+        Triple(warningT, "${warningM} м", Color(0xCCFF6D00)),
+        Triple(cautionT, "${cautionM} м", Color(0xCCFFEA00))
     )
     distLines.forEach { (t, _, color) ->
         drawLine(color = color, start = lp(t), end = rp(t), strokeWidth = 2.5f, cap = StrokeCap.Round)

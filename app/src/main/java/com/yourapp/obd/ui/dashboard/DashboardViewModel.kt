@@ -1,9 +1,11 @@
 package com.yourapp.obd.ui.dashboard
 
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import androidx.camera.view.PreviewView
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -23,6 +25,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -47,6 +50,10 @@ class DashboardViewModel @Inject constructor(
     private val recordVideoUseCase: RecordVideoUseCase,
     private val dataStore: DataStore<Preferences>
 ) : ViewModel() {
+
+    companion object {
+        val KEY_DEVICE_ADDRESS = stringPreferencesKey("device_address")
+    }
 
     val connectionState: StateFlow<ConnectionState> = obdRepository.connectionState
         .stateIn(viewModelScope, SharingStarted.Eagerly, ConnectionState.DISCONNECTED)
@@ -78,11 +85,31 @@ class DashboardViewModel @Inject constructor(
         collectOBD()
         collectAlerts()
         collectImpacts()
+        autoConnectOBD()
+    }
+
+    private fun autoConnectOBD() {
+        viewModelScope.launch {
+            val prefs = dataStore.data.first()
+            val address = prefs[KEY_DEVICE_ADDRESS] ?: return@launch
+            if (address.isBlank()) return@launch
+            val adapter = BluetoothAdapter.getDefaultAdapter()
+            if (adapter == null) return@launch
+            val device = adapter.getRemoteDevice(address)
+            obdRepository.connectToDevice(device)
+        }
     }
 
     fun bindCamera(owner: LifecycleOwner, previewView: PreviewView) {
         if (cameraIsBound) return
         cameraIsBound = true
+        viewModelScope.launch {
+            val prefs = dataStore.data.first()
+            val bufferGb = prefs[SettingsViewModel.KEY_BUFFER_SIZE_GB] ?: 4
+            val durationMin = prefs[SettingsViewModel.KEY_SEGMENT_DURATION] ?: 5
+            cameraRepository.setMaxBufferBytes(bufferGb.toLong() * 1024 * 1024 * 1024)
+            cameraRepository.setSegmentDurationMs(durationMin * 60 * 1000L)
+        }
         cameraRepository.bindCamera(owner, previewView)
         cameraRepository.startRecording()
     }
