@@ -81,6 +81,9 @@ class DashboardViewModel @Inject constructor(
 
     private var cameraIsBound = false
 
+    private val _fcwDistanceM = MutableStateFlow<Float?>(null)
+    val fcwDistanceM: StateFlow<Float?> = _fcwDistanceM.asStateFlow()
+
     init {
         collectOBD()
         collectAlerts()
@@ -96,7 +99,12 @@ class DashboardViewModel @Inject constructor(
             val adapter = BluetoothAdapter.getDefaultAdapter()
             if (adapter == null) return@launch
             val device = adapter.getRemoteDevice(address)
-            obdRepository.connectToDevice(device)
+            while (true) {
+                obdRepository.connectToDevice(device)
+                connectionState.first { it != ConnectionState.CONNECTING }
+                if (connectionState.value == ConnectionState.CONNECTED) break
+                kotlinx.coroutines.delay(3000)
+            }
         }
     }
 
@@ -127,7 +135,18 @@ class DashboardViewModel @Inject constructor(
 
     private fun collectAlerts() {
         viewModelScope.launch {
-            detectAdasUseCase().collect { _lastAlert.value = it }
+            detectAdasUseCase().collect { alert ->
+                _lastAlert.value = alert
+                if (alert is AdasAlert.ForwardCollision) {
+                    val speed = _obdData.value.speedKmh
+                    if (speed != null && speed > 0) {
+                        val speedMps = speed / 3.6f
+                        _fcwDistanceM.value = speedMps * alert.ttcSeconds
+                    } else {
+                        _fcwDistanceM.value = null
+                    }
+                }
+            }
         }
     }
 

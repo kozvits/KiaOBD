@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -35,22 +36,26 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.yourapp.obd.data.bluetooth.ConnectionState
 import com.yourapp.obd.domain.model.AdasAlert
 import com.yourapp.obd.domain.model.AlertLevel
 import com.yourapp.obd.ui.theme.AccentCyan
 import com.yourapp.obd.ui.theme.AlertOrange
 import com.yourapp.obd.ui.theme.AlertRed
 import com.yourapp.obd.ui.theme.AlertYellow
+import com.yourapp.obd.ui.theme.DarkSurface
 import com.yourapp.obd.ui.theme.GreenOk
 
 @Composable
 fun DvrAdasScreen(
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
-    val obdData       by viewModel.obdData.collectAsStateWithLifecycle()
-    val lastAlert     by viewModel.lastAlert.collectAsStateWithLifecycle()
-    val isRecording   by viewModel.isRecording.collectAsStateWithLifecycle()
-    val calibration   by viewModel.adasCalibration.collectAsStateWithLifecycle()
+    val obdData           by viewModel.obdData.collectAsStateWithLifecycle()
+    val lastAlert         by viewModel.lastAlert.collectAsStateWithLifecycle()
+    val isRecording       by viewModel.isRecording.collectAsStateWithLifecycle()
+    val calibration       by viewModel.adasCalibration.collectAsStateWithLifecycle()
+    val connectionState   by viewModel.connectionState.collectAsStateWithLifecycle()
+    val fcwDistanceM      by viewModel.fcwDistanceM.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val laneColor = if (lastAlert is AdasAlert.LaneDeparture) Color(0xCCFF1744) else Color(0xBB00E676)
@@ -97,17 +102,46 @@ fun DvrAdasScreen(
                 }
         )
 
-        // ── 3. Алерт внизу ──────────────────────────────────────────────────
+        // ── 3. Алерт ─────────────────────────────────────────────────────────
         lastAlert?.let { alert ->
             AdasAlertBanner(
                 alert    = alert,
+                fcwDistanceM = if (alert is AdasAlert.ForwardCollision) fcwDistanceM else null,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 16.dp)
+                    .padding(bottom = 48.dp)
             )
         }
 
-        // ── 4. REC индикатор ─────────────────────────────────────────────────
+        // ── 4. Строка состояния OBD ─────────────────────────────────────────
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(DarkSurface.copy(alpha = 0.85f))
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            val btLabel = when (connectionState) {
+                ConnectionState.CONNECTED -> "OBD: Подключено"
+                ConnectionState.CONNECTING -> "OBD: Подключение..."
+                ConnectionState.ERROR -> "OBD: Ошибка"
+                ConnectionState.DISCONNECTED -> "OBD: Не подключено"
+            }
+            val btColor = when (connectionState) {
+                ConnectionState.CONNECTED -> GreenOk
+                ConnectionState.CONNECTING -> AlertYellow
+                ConnectionState.ERROR -> AlertRed
+                ConnectionState.DISCONNECTED -> Color.Gray
+            }
+            Text(btLabel, color = btColor, fontSize = 10.sp, fontWeight = FontWeight.Medium)
+            Text(if (isRecording) "● REC" else "○ STANDBY",
+                color = if (isRecording) AlertRed else Color.Gray,
+                fontSize = 10.sp, fontWeight = FontWeight.Bold)
+        }
+
+        // ── 5. REC индикатор ─────────────────────────────────────────────────
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
@@ -140,8 +174,19 @@ fun DvrAdasScreen(
         ) {
             HudCard {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("РАДАР",   color = Color.Gray, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                    Text("АКТИВЕН",color = GreenOk,    fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("ДИСТАНЦИЯ", color = Color.Gray, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    val dist = fcwDistanceM
+                    Text(
+                        text       = if (dist != null) "${dist.toInt()} м" else "--",
+                        color      = when {
+                            dist == null -> Color.Gray
+                            dist <= 5    -> AlertRed
+                            dist <= 15   -> AlertOrange
+                            else         -> GreenOk
+                        },
+                        fontSize   = 22.sp,
+                        fontWeight = FontWeight.Black
+                    )
                 }
             }
             HudCard {
@@ -284,13 +329,16 @@ private fun HudCard(content: @Composable () -> Unit) {
 }
 
 @Composable
-private fun AdasAlertBanner(alert: AdasAlert, modifier: Modifier) {
+private fun AdasAlertBanner(alert: AdasAlert, fcwDistanceM: Float?, modifier: Modifier) {
     val (text, color) = when (alert) {
         is AdasAlert.LaneDeparture      -> "ВЫЕЗД ИЗ ПОЛОСЫ: ${alert.direction}" to AlertYellow
-        is AdasAlert.ForwardCollision   -> when (alert.level) {
-            AlertLevel.DANGER  -> "ОПАСНОСТЬ СТОЛКНОВЕНИЯ!" to AlertRed
-            AlertLevel.WARNING -> "ВНИМАНИЕ! Авто близко"   to AlertOrange
-            AlertLevel.CAUTION -> "Сократи дистанцию"       to AlertYellow
+        is AdasAlert.ForwardCollision   -> {
+            val distText = if (fcwDistanceM != null) "  •  ${fcwDistanceM.toInt()} м" else ""
+            when (alert.level) {
+                AlertLevel.DANGER  -> "ОПАСНОСТЬ СТОЛКНОВЕНИЯ!$distText" to AlertRed
+                AlertLevel.WARNING -> "ВНИМАНИЕ!$distText"              to AlertOrange
+                AlertLevel.CAUTION -> "$distText"                        to AlertYellow
+            }
         }
         is AdasAlert.SpeedLimitExceeded -> "Превышение: ${alert.actualKmh}/${alert.limitKmh} км/ч" to AlertRed
         is AdasAlert.DriverFatigue      -> "УСТАЛОСТЬ ВОДИТЕЛЯ!"  to AlertRed
