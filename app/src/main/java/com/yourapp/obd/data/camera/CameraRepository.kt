@@ -12,6 +12,7 @@ import java.io.File
 interface CameraRepository {
     val isRecording: StateFlow<Boolean>
     val adasAlerts: SharedFlow<AdasAlert>
+    val lastVehicleDistanceM: Float?
     fun bindCamera(owner: LifecycleOwner, previewView: PreviewView)
     fun startRecording()
     fun stopRecording()
@@ -21,6 +22,7 @@ interface CameraRepository {
     fun updateObdSpeed(speedKmh: Int)
     fun setOutputDirectory(dir: File)
     fun setMaxBufferBytes(bytes: Long)
+    fun setSegmentDurationMs(ms: Long)
 }
 
 class CameraRepositoryImpl(
@@ -31,6 +33,7 @@ class CameraRepositoryImpl(
 
     override val isRecording: StateFlow<Boolean> = videoRecorder.isRecording
     override val adasAlerts: SharedFlow<AdasAlert> = adasAnalyzer.alerts
+    override val lastVehicleDistanceM: Float? get() = adasAnalyzer.lastVehicleDistanceM
 
     override fun bindCamera(owner: LifecycleOwner, previewView: PreviewView) {
         videoRecorder.bindCamera(owner, previewView, adasAnalyzer)

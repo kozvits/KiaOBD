@@ -1,5 +1,6 @@
 package com.yourapp.obd.ui.dashboard
 
+import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
 import androidx.camera.view.PreviewView
 import androidx.datastore.core.DataStore
@@ -18,11 +19,13 @@ import com.yourapp.obd.domain.usecase.GetOBDDataUseCase
 import com.yourapp.obd.domain.usecase.RecordVideoUseCase
 import com.yourapp.obd.ui.settings.SettingsViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -77,7 +80,9 @@ class DashboardViewModel @Inject constructor(
     init {
         collectOBD()
         collectAlerts()
+        collectDistance()
         collectImpacts()
+        autoConnectOBD()
     }
 
     fun bindCamera(owner: LifecycleOwner, previewView: PreviewView) {
@@ -101,6 +106,15 @@ class DashboardViewModel @Inject constructor(
     private fun collectAlerts() {
         viewModelScope.launch {
             detectAdasUseCase().collect { _lastAlert.value = it }
+        }
+    }
+
+    private fun collectDistance() {
+        viewModelScope.launch {
+            while (true) {
+                _fcwDistanceM.value = cameraRepository.lastVehicleDistanceM
+                kotlinx.coroutines.delay(100)
+            }
         }
     }
 
