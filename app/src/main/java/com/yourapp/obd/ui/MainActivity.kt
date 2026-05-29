@@ -34,8 +34,13 @@ class MainActivity : ComponentActivity() {
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        // Р—Р°РїСѓСЃРєР°РµРј СЃРµСЂРІРёСЃ РІ Р»СЋР±РѕРј СЃР»СѓС‡Р°Рµ вЂ” РІРЅСѓС‚СЂРё РѕРЅ СЃР°Рј РїСЂРѕРІРµСЂРёС‚ РЅР°Р»РёС‡РёРµ CAMERA
-        startDrivingService()
+        val allGranted = permissions.values.all { it }
+        if (allGranted) {
+            startDrivingService()
+        } else {
+            // Показать диалог с объяснением
+            showPermissionRationale()
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -56,6 +61,11 @@ class MainActivity : ComponentActivity() {
         checkPermissionsAndStart()
     }
 
+    override fun onDestroy() {
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        super.onDestroy()
+    }
+
     private fun checkPermissionsAndStart() {
         val allGranted = requiredPermissions.all {
             ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
@@ -70,5 +80,9 @@ class MainActivity : ComponentActivity() {
     private fun startDrivingService() {
         val serviceIntent = Intent(this, DrivingForegroundService::class.java)
         startForegroundService(serviceIntent)
+    }
+
+    private fun showPermissionRationale() {
+        // Реализуйте показы диалога с объяснением
     }
 }

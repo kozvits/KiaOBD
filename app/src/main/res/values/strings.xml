@@ -1,29 +1,16 @@
-<?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Существующие строки -->
     <string name="app_name">KIA OBD</string>
     <string name="dashboard">Панель приборов</string>
     <string name="dtc">Коды ошибок</string>
     <string name="settings">Настройки</string>
     <string name="player">Видеозаписи</string>
-    <string name="recording">Запись</string>
-    <string name="connected">Подключено</string>
-    <string name="disconnected">Не подключено</string>
-    <string name="speed">Скорость</string>
-    <string name="rpm">Обороты</string>
-    <string name="coolant">Температура ОЖ</string>
-    <string name="fuel">Уровень топлива</string>
-    <string name="map_pressure">Давление MAP</string>
-    <string name="throttle">Дроссель</string>
-    <string name="timing">УОЗ</string>
-    <string name="iat">Температура впуска</string>
-    <string name="no_errors">Ошибок нет</string>
-    <string name="clear_dtc">Сбросить ошибки</string>
-    <string name="clear_dtc_confirm">Все коды ошибок будут удалены</string>
-    <string name="cancel">Отмена</string>
-    <string name="confirm">Подтвердить</string>
-    <string name="ldw_alert">Выезд из полосы!</string>
-    <string name="fcw_alert">Опасность столкновения!</string>
-    <string name="fatigue_alert">Усталость водителя!</string>
-    <string name="pedestrian_alert">Пешеход на дороге!</string>
-    <string name="speed_exceeded">Превышение скорости!</string>
+
+    <!-- Новые строки для уведомлений -->
+    <string name="notification_recording">Идёт запись • ADAS активен</string>
+    <string name="notification_impact_detected">⚠️ Зафиксирован удар — видео защищено</string>
+    <string name="notification_no_camera_permission">Нет разрешения на камеру — запись остановлена</string>
+    <string name="notification_error_monitoring">Ошибка мониторинга ударов</string>
+    <string name="notification_channel_name">Запись видеорегистратора</string>
+    <string name="notification_channel_description">Фоновая запись и мониторинг ADAS</string>
 </resources>

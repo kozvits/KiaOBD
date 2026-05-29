@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import androidx.core.content.ContextCompat
@@ -40,9 +41,8 @@ class DrivingForegroundService : Service() {
         super.onCreate()
         createNotificationChannel()
 
-        // На Android Q+ (API 29+) startForeground с типом camera требует
-        // чтобы разрешение CAMERA уже было выдано. Если нет — стартуем без типа.
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+        // ��������� ���������� CAMERA ��� Android 10+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             val hasCameraPermission = ContextCompat.checkSelfPermission(
                 this, Manifest.permission.CAMERA
             ) == PackageManager.PERMISSION_GRANTED
@@ -51,11 +51,9 @@ class DrivingForegroundService : Service() {
                 startForeground(
                     NOTIFICATION_ID,
                     buildNotification(),
-                    android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
+                    ServiceInfo.FOREGROUND_SERVICE_TYPE_CAMERA
                 )
             } else {
-                // Запускаемся без camera type — камера не будет использоваться
-                // пока пользователь не выдаст разрешение
                 startForeground(NOTIFICATION_ID, buildNotification())
             }
         } else {
@@ -79,9 +77,18 @@ class DrivingForegroundService : Service() {
 
     private fun monitorImpacts() {
         scope.launch {
-            accelerometerRepository.impactEvents().collect {
-                cameraRepository.markCurrentAsProtected()
-                updateNotification("\u26a0 Зафиксирован удар — видео защищено")
+            try {
+                accelerometerRepository.impactEvents().collect {
+                    if (ContextCompat.checkSelfPermission(this@DrivingForegroundService, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
+                        cameraRepository.markCurrentAsProtected()
+                        updateNotification(getString(R.string.notification_impact_detected))
+                    } else {
+                        cameraRepository.stopRecording()
+                        updateNotification(getString(R.string.notification_no_camera_permission))
+                    }
+                }
+            } catch (e: Exception) {
+                updateNotification(getString(R.string.notification_error_monitoring))
             }
         }
     }
@@ -89,23 +96,23 @@ class DrivingForegroundService : Service() {
     private fun createNotificationChannel() {
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Запись видеорегистратора",
+            getString(R.string.notification_channel_name),
             NotificationManager.IMPORTANCE_LOW
         ).apply {
-            description = "Фоновая запись и мониторинг ADAS"
+            description = getString(R.string.notification_channel_description)
         }
         val manager = getSystemService(NotificationManager::class.java)
         manager.createNotificationChannel(channel)
     }
 
-    private fun buildNotification(text: String = "Идёт запись • ADAS активен"): Notification {
+    private fun buildNotification(text: String = getString(R.string.notification_recording)): Notification {
         val intent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
             this, 0, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         return NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle("KIA OBD")
+            .setContentTitle(getString(R.string.app_name))
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentIntent(pendingIntent)

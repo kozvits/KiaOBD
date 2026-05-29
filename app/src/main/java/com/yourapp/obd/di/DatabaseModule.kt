@@ -23,7 +23,11 @@ object DatabaseModule {
             context,
             AppDatabase::class.java,
             "kia_obd.db"
-        ).fallbackToDestructiveMigration().build()
+        )
+        .addMigrations(
+            // Добавьте миграции здесь
+        )
+        .build()
     }
 
     @Provides
