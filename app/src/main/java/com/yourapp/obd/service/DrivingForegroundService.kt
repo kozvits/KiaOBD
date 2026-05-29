@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
@@ -41,8 +42,8 @@ class DrivingForegroundService : Service() {
         super.onCreate()
         createNotificationChannel()
 
-        // Проверяем разрешение CAMERA для Android 10+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ CAMERA пїЅпїЅпїЅ Android 10+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             val hasCameraPermission = ContextCompat.checkSelfPermission(
                 this, Manifest.permission.CAMERA
             ) == PackageManager.PERMISSION_GRANTED
