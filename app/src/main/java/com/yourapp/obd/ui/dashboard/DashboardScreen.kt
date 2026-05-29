@@ -6,7 +6,6 @@ import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -29,19 +28,12 @@ import androidx.compose.material.icons.filled.VideocamOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -59,14 +51,9 @@ import com.yourapp.obd.ui.theme.AlertYellow
 import com.yourapp.obd.ui.theme.DarkBackground
 import com.yourapp.obd.ui.theme.DarkSurface
 import com.yourapp.obd.ui.theme.GreenOk
-import kotlin.math.cos
-import kotlin.math.sin
 
 @Composable
 fun DashboardScreen(
-    onNavigateToDtc: () -> Unit,
-    onNavigateToSettings: () -> Unit,
-    onNavigateToPlayer: () -> Unit,
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
     val connectionState by viewModel.connectionState.collectAsStateWithLifecycle()
@@ -82,17 +69,14 @@ fun DashboardScreen(
         Column(modifier = Modifier.fillMaxSize()) {
             StatusBar(
                 connectionState = connectionState,
-                isRecording = isRecording,
-                onNavigateToDtc = onNavigateToDtc,
-                onNavigateToSettings = onNavigateToSettings,
-                onNavigateToPlayer = onNavigateToPlayer
+                isRecording = isRecording
             )
             Row(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(8.dp)
+                    .padding(start = 8.dp, end = 8.dp, top = 8.dp)
             ) {
-                GaugesSection(
+                DigitalGaugesSection(
                     obdData = obdData,
                     modifier = Modifier
                         .weight(0.55f)
@@ -116,16 +100,20 @@ fun DashboardScreen(
                     .padding(bottom = 16.dp)
             )
         }
+
+        ObdStatusLine(
+            connectionState = connectionState,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 12.dp, bottom = 6.dp)
+        )
     }
 }
 
 @Composable
 private fun StatusBar(
     connectionState: ConnectionState,
-    isRecording: Boolean,
-    onNavigateToDtc: () -> Unit,
-    onNavigateToSettings: () -> Unit,
-    onNavigateToPlayer: () -> Unit
+    isRecording: Boolean
 ) {
     val infiniteTransition = rememberInfiniteTransition(label = "blink")
     val alpha by infiniteTransition.animateFloat(
@@ -165,145 +153,84 @@ private fun StatusBar(
             tint = if (isRecording) AlertRed.copy(alpha = alpha) else Color.Gray,
             modifier = Modifier.size(20.dp)
         )
-        Spacer(modifier = Modifier.weight(1f))
-        TextButton(onClick = onNavigateToDtc) {
-            Text("DTC", color = AccentCyan, fontSize = 12.sp)
-        }
-        TextButton(onClick = onNavigateToPlayer) {
-            Text("ВИДЕО", color = AccentCyan, fontSize = 12.sp)
-        }
-        TextButton(onClick = onNavigateToSettings) {
-            Text("НАСТРОЙКИ", color = AccentCyan, fontSize = 12.sp)
-        }
     }
 }
 
 @Composable
-private fun GaugesSection(obdData: OBDData, modifier: Modifier) {
-    Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.SpaceEvenly,
-        verticalAlignment = Alignment.CenterVertically
+private fun DigitalGaugesSection(obdData: OBDData, modifier: Modifier) {
+    Column(
+        modifier = modifier.padding(4.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        AnalogGauge(
-            value = obdData.speedKmh?.toFloat() ?: 0f,
-            maxValue = 180f,
-            label = "км/ч",
-            unit = "",
+        DigitalGauge(
+            value = obdData.speedKmh ?: 0,
+            unit = "км/ч",
+            label = "СКОРОСТЬ",
             color = AccentCyan,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight(0.9f)
+            large = true,
+            modifier = Modifier.weight(1f).fillMaxWidth()
         )
-        AnalogGauge(
-            value = obdData.rpm?.toFloat() ?: 0f,
-            maxValue = 8000f,
-            label = "RPM",
-            unit = "×1000",
+        Spacer(modifier = Modifier.height(12.dp))
+        DigitalGauge(
+            value = obdData.rpm ?: 0,
+            unit = "RPM",
+            label = "ОБОРОТЫ",
             color = AlertOrange,
-            modifier = Modifier
-                .weight(1f)
-                .fillMaxHeight(0.9f)
+            large = false,
+            modifier = Modifier.weight(0.6f).fillMaxWidth()
         )
     }
 }
 
 @Composable
-private fun AnalogGauge(
-    value: Float,
-    maxValue: Float,
-    label: String,
+private fun DigitalGauge(
+    value: Int,
     unit: String,
+    label: String,
     color: Color,
+    large: Boolean,
     modifier: Modifier
 ) {
-    Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        Canvas(modifier = Modifier.fillMaxSize(0.9f)) {
-            val center = Offset(size.width / 2f, size.height / 2f)
-            val radius = minOf(size.width, size.height) / 2f - 16.dp.toPx()
-            val startAngle = 150f
-            val sweepRange = 240f
-
-            drawArc(
-                color = Color.DarkGray,
-                startAngle = startAngle,
-                sweepAngle = sweepRange,
-                useCenter = false,
-                topLeft = Offset(center.x - radius, center.y - radius),
-                size = Size(radius * 2, radius * 2),
-                style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round)
-            )
-
-            val fraction = (value / maxValue).coerceIn(0f, 1f)
-            val valueSweep = sweepRange * fraction
-            if (fraction > 0f) {
-                drawArc(
-                    color = color,
-                    startAngle = startAngle,
-                    sweepAngle = valueSweep,
-                    useCenter = false,
-                    topLeft = Offset(center.x - radius, center.y - radius),
-                    size = Size(radius * 2, radius * 2),
-                    style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round)
-                )
-            }
-
-            drawTickMarks(center, radius, startAngle, sweepRange, color)
-            drawNeedle(center, radius * 0.75f, startAngle + valueSweep, color)
-        }
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = DarkSurface),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxSize().padding(12.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
             Text(
-                text = if (label == "км/ч") "${value.toInt()}" else "${(value / 1000f).let { "%.1f".format(it) }}",
-                color = Color.White,
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold
+                text = label,
+                color = Color.Gray,
+                fontSize = if (large) 13.sp else 11.sp,
+                fontWeight = FontWeight.Medium,
+                letterSpacing = 2.sp
             )
-            Text(text = label, color = color, fontSize = 12.sp)
+            Spacer(modifier = Modifier.height(if (large) 8.dp else 4.dp))
+            Text(
+                text = if (unit == "RPM") "$value" else "$value",
+                color = color,
+                fontSize = if (large) 64.sp else 36.sp,
+                fontWeight = FontWeight.Black,
+                textAlign = TextAlign.Center
+            )
+            Text(
+                text = unit,
+                color = color.copy(alpha = 0.7f),
+                fontSize = if (large) 16.sp else 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
         }
     }
-}
-
-private fun DrawScope.drawTickMarks(
-    center: Offset,
-    radius: Float,
-    startAngle: Float,
-    sweepRange: Float,
-    color: Color
-) {
-    val tickCount = 8
-    for (i in 0..tickCount) {
-        val angle = Math.toRadians((startAngle + sweepRange * i / tickCount).toDouble())
-        val outerX = center.x + radius * cos(angle).toFloat()
-        val outerY = center.y + radius * sin(angle).toFloat()
-        val innerX = center.x + (radius - 16.dp.toPx()) * cos(angle).toFloat()
-        val innerY = center.y + (radius - 16.dp.toPx()) * sin(angle).toFloat()
-        drawLine(
-            color = color.copy(alpha = 0.6f),
-            start = Offset(innerX, innerY),
-            end = Offset(outerX, outerY),
-            strokeWidth = 2.dp.toPx()
-        )
-    }
-}
-
-private fun DrawScope.drawNeedle(center: Offset, length: Float, angleDeg: Float, color: Color) {
-    val angle = Math.toRadians(angleDeg.toDouble())
-    val tipX = center.x + length * cos(angle).toFloat()
-    val tipY = center.y + length * sin(angle).toFloat()
-    drawLine(
-        color = color,
-        start = center,
-        end = Offset(tipX, tipY),
-        strokeWidth = 3.dp.toPx(),
-        cap = StrokeCap.Round
-    )
-    drawCircle(color = Color.White, radius = 6.dp.toPx(), center = center)
 }
 
 @Composable
 private fun DigitalMetricsSection(obdData: OBDData, modifier: Modifier) {
     Column(
-        modifier = modifier.padding(4.dp),
+        modifier = modifier.padding(vertical = 4.dp),
         verticalArrangement = Arrangement.SpaceEvenly
     ) {
         Row(
@@ -351,6 +278,26 @@ private fun MetricCard(label: String, value: String, color: Color) {
             )
         }
     }
+}
+
+@Composable
+private fun ObdStatusLine(
+    connectionState: ConnectionState,
+    modifier: Modifier
+) {
+    val (text, color) = when (connectionState) {
+        ConnectionState.CONNECTED -> "OBD: Подключено" to GreenOk
+        ConnectionState.CONNECTING -> "OBD: Подключение..." to AlertYellow
+        ConnectionState.ERROR -> "OBD: Ошибка" to AlertRed
+        ConnectionState.DISCONNECTED -> "OBD: Отключён" to Color.Gray
+    }
+    Text(
+        text = text,
+        color = color,
+        fontSize = 11.sp,
+        fontWeight = FontWeight.Medium,
+        modifier = modifier
+    )
 }
 
 @Composable
