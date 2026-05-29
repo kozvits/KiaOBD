@@ -177,7 +177,7 @@ class SettingsViewModel @Inject constructor(
                     conn.disconnect()
                 } catch (_: Exception) { err++ }
             }
-            save { it[KEY_SPEEDCAM_LAST_UPD] = System.currentTimeMillis().toString() }
+            dataStore.edit { it[KEY_SPEEDCAM_LAST_UPD] = System.currentTimeMillis().toString() }
             _speedcamUpdateResult.value = when {
                 err == 0  -> "Обновлено: $ok источников"
                 ok == 0   -> "Ошибка обновления всех источников"
