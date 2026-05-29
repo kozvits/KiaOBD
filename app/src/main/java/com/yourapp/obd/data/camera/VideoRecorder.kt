@@ -51,11 +51,13 @@ class VideoRecorder(private val context: Context) {
 
     private var outputDirectory: File = context.getExternalFilesDir("dashcam") ?: context.filesDir
     private var maxBufferBytes: Long = DEFAULT_MAX_BYTES
+    private var segmentDurationMs: Long = SEGMENT_DURATION_MS
     private var videoCapture: VideoCapture<Recorder>? = null
     private val executor = Executors.newSingleThreadExecutor()
 
     fun setOutputDirectory(dir: File) { outputDirectory = dir; outputDirectory.mkdirs() }
     fun setMaxBufferBytes(bytes: Long) { maxBufferBytes = bytes }
+    fun setSegmentDurationMs(ms: Long) { segmentDurationMs = ms }
 
     fun bindCamera(
         lifecycleOwner: androidx.lifecycle.LifecycleOwner,
@@ -96,7 +98,7 @@ class VideoRecorder(private val context: Context) {
         segmentJob = scope.launch {
             while (true) {
                 startSegment()
-                delay(SEGMENT_DURATION_MS)
+                delay(segmentDurationMs)
                 stopCurrentSegment()
                 cleanupOldSegments()
             }
