@@ -21,6 +21,7 @@ import com.yourapp.obd.ui.settings.SettingsViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -62,6 +63,9 @@ class DashboardViewModel @Inject constructor(
 
     private val _lastAlert = MutableStateFlow<AdasAlert?>(null)
     val lastAlert: StateFlow<AdasAlert?> = _lastAlert.asStateFlow()
+
+    private val _fcwDistanceM = MutableStateFlow<Float?>(null)
+    val fcwDistanceM: StateFlow<Float?> = _fcwDistanceM.asStateFlow()
 
     // Калибровка ADAS из DataStore
     val adasCalibration: StateFlow<AdasCalibration> = dataStore.data.map { p ->
@@ -128,8 +132,28 @@ class DashboardViewModel @Inject constructor(
         viewModelScope.launch { obdRepository.connectToDevice(device) }
     }
 
+    private fun autoConnectOBD() {
+        viewModelScope.launch {
+            val address = dataStore.data.first()[KEY_DEVICE_ADDRESS] ?: return@launch
+            val adapter = BluetoothAdapter.getDefaultAdapter()
+            if (adapter == null) return@launch
+            val device = adapter.getRemoteDevice(address)
+            // Циклическая попытка подключения: если не удалось — ждём 3с и повторяем
+            while (true) {
+                if (connectionState.value != ConnectionState.CONNECTED) {
+                    obdRepository.connectToDevice(device)
+                }
+                delay(3000)
+            }
+        }
+    }
+
     fun startRecording() = recordVideoUseCase.start()
     fun stopRecording()  = recordVideoUseCase.stop()
+
+    companion object {
+        val KEY_DEVICE_ADDRESS = stringPreferencesKey("obd_device_address")
+    }
 
     override fun onCleared() {
         super.onCleared()

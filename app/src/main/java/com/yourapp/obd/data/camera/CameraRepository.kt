@@ -47,4 +47,5 @@ class CameraRepositoryImpl(
     override fun updateObdSpeed(speedKmh: Int) { adasAnalyzer.currentSpeedKmh = speedKmh }
     override fun setOutputDirectory(dir: File) = videoRecorder.setOutputDirectory(dir)
     override fun setMaxBufferBytes(bytes: Long) = videoRecorder.setMaxBufferBytes(bytes)
+    override fun setSegmentDurationMs(ms: Long) = videoRecorder.setSegmentDurationMs(ms)
 }
