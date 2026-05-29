@@ -50,37 +50,19 @@ fun KiaOBDNavHost() {
                     icon = { Icon(Icons.Default.Videocam, contentDescription = null) },
                     label = { Text("DVR/ADAS") },
                     selected = currentRoute == Routes.DVR_ADAS,
-                    onClick = {
-                        navController.navigate(Routes.DVR_ADAS) {
-                            popUpTo(navController.graph.startDestinationId) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
+                    onClick = { navController.navigate(Routes.DVR_ADAS) }
                 )
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.Speed, contentDescription = null) },
                     label = { Text("Бортовой ПК") },
                     selected = currentRoute == Routes.COMPUTER,
-                    onClick = {
-                        navController.navigate(Routes.COMPUTER) {
-                            popUpTo(navController.graph.startDestinationId) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
+                    onClick = { navController.navigate(Routes.COMPUTER) }
                 )
                 NavigationBarItem(
                     icon = { Icon(Icons.Default.Settings, contentDescription = null) },
                     label = { Text("Настройки") },
                     selected = currentRoute == Routes.SETTINGS,
-                    onClick = {
-                        navController.navigate(Routes.SETTINGS) {
-                            popUpTo(navController.graph.startDestinationId) { saveState = true }
-                            launchSingleTop = true
-                            restoreState = true
-                        }
-                    }
+                    onClick = { navController.navigate(Routes.SETTINGS) }
                 )
             }
         }

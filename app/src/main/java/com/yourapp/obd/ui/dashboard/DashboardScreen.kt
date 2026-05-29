@@ -73,7 +73,6 @@ fun DashboardScreen(
     val isRecording by viewModel.isRecording.collectAsStateWithLifecycle()
     val obdData by viewModel.obdData.collectAsStateWithLifecycle()
     val lastAlert by viewModel.lastAlert.collectAsStateWithLifecycle()
-    val fcwDistanceM by viewModel.fcwDistanceM.collectAsStateWithLifecycle()
 
     Box(
         modifier = Modifier
@@ -112,46 +111,10 @@ fun DashboardScreen(
         lastAlert?.let { alert ->
             AdasAlertOverlay(
                 alert = alert,
-                fcwDistanceM = if (alert is AdasAlert.ForwardCollision) fcwDistanceM else null,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
-                    .padding(bottom = 48.dp)
+                    .padding(bottom = 16.dp)
             )
-        }
-
-        // ── Строка состояния OBD ─────────────────────────────────────────────
-        Row(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .background(DarkSurface)
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            val btLabel = when (connectionState) {
-                ConnectionState.CONNECTED -> "OBD-II: Подключено"
-                ConnectionState.CONNECTING -> "OBD-II: Подключение..."
-                ConnectionState.ERROR -> "OBD-II: Ошибка подключения"
-                ConnectionState.DISCONNECTED -> "OBD-II: Не подключено"
-            }
-            val btColor = when (connectionState) {
-                ConnectionState.CONNECTED -> GreenOk
-                ConnectionState.CONNECTING -> AlertYellow
-                ConnectionState.ERROR -> AlertRed
-                ConnectionState.DISCONNECTED -> Color.Gray
-            }
-            Text(btLabel, color = btColor, fontSize = 10.sp, fontWeight = FontWeight.Medium)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                val dist = fcwDistanceM
-                if (dist != null) {
-                    Text("${dist.toInt()} м", color = AccentCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                    Spacer(Modifier.width(12.dp))
-                }
-                Text(if (isRecording) "● REC" else "○ STANDBY",
-                    color = if (isRecording) AlertRed else Color.Gray,
-                    fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            }
         }
     }
 }
@@ -391,16 +354,13 @@ private fun MetricCard(label: String, value: String, color: Color) {
 }
 
 @Composable
-private fun AdasAlertOverlay(alert: AdasAlert, fcwDistanceM: Float?, modifier: Modifier) {
+private fun AdasAlertOverlay(alert: AdasAlert, modifier: Modifier) {
     val (text, color) = when (alert) {
         is AdasAlert.LaneDeparture -> "⚠ ВЫЕЗД ИЗ ПОЛОСЫ ${alert.direction}" to AlertYellow
-        is AdasAlert.ForwardCollision -> {
-            val dist = if (fcwDistanceM != null) "  ${fcwDistanceM.toInt()} м" else ""
-            when (alert.level) {
-                AlertLevel.DANGER -> "🔴 ОПАСНОСТЬ СТОЛКНОВЕНИЯ!$dist" to AlertRed
-                AlertLevel.WARNING -> "🟠 ВНИМАНИЕ!$dist" to AlertOrange
-                AlertLevel.CAUTION -> "🟡 $dist" to AlertYellow
-            }
+        is AdasAlert.ForwardCollision -> when (alert.level) {
+            AlertLevel.DANGER -> "🔴 ОПАСНОСТЬ СТОЛКНОВЕНИЯ! ${alert.ttcSeconds.toInt()}с" to AlertRed
+            AlertLevel.WARNING -> "🟠 ВНИМАНИЕ! Авто близко" to AlertOrange
+            AlertLevel.CAUTION -> "🟡 Сократи дистанцию" to AlertYellow
         }
         is AdasAlert.SpeedLimitExceeded -> "🚫 Превышение: ${alert.actualKmh}/${alert.limitKmh} км/ч" to AlertRed
         is AdasAlert.DriverFatigue -> "😴 УСТАЛОСТЬ ВОДИТЕЛЯ!" to AlertRed

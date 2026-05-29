@@ -8,7 +8,6 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -121,34 +120,40 @@ class SettingsViewModel @Inject constructor(
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun getPairedDevices(): List<BluetoothDevice> = obdRepository.getPairedDevices().toList()
 
-    fun selectDevice(address: String) = save { it[KEY_DEVICE_ADDRESS] = address }
+    fun selectDevice(address: String) { viewModelScope.launch { dataStore.edit { it[KEY_DEVICE_ADDRESS] = address } } }
     fun setBufferSizeGb(gb: Int) {
-        save { it[KEY_BUFFER_SIZE_GB] = gb }
-        viewModelScope.launch { cameraRepository.setMaxBufferBytes(gb.toLong() * 1024 * 1024 * 1024) }
+        viewModelScope.launch {
+            dataStore.edit { it[KEY_BUFFER_SIZE_GB] = gb }
+            cameraRepository.setMaxBufferBytes(gb.toLong() * 1024 * 1024 * 1024)
+        }
     }
-    fun setVideoResolution(r: String)    = save { it[KEY_VIDEO_RESOLUTION]  = r }
-    fun setSegmentDurationMin(m: Int)    = save { it[KEY_SEGMENT_DURATION]  = m }
-    fun setAdasSensitivity(s: String)    = save { it[KEY_ADAS_SENSITIVITY]  = s }
-    fun setLdwEnabled(v: Boolean)        { save { it[KEY_LDW]       = v }; adasAnalyzer.ldwEnabled           = v }
-    fun setFcwEnabled(v: Boolean)        { save { it[KEY_FCW]       = v }; adasAnalyzer.fcwEnabled           = v }
-    fun setSignEnabled(v: Boolean)       { save { it[KEY_SIGN]      = v }; adasAnalyzer.signDetectionEnabled = v }
-    fun setDmsEnabled(v: Boolean)        { save { it[KEY_DMS]       = v }; adasAnalyzer.dmsEnabled           = v }
-    fun setPedestrianEnabled(v: Boolean) { save { it[KEY_PEDESTRIAN]= v }; adasAnalyzer.pedestrianEnabled    = v }
+    fun setVideoResolution(r: String)   { viewModelScope.launch { dataStore.edit { it[KEY_VIDEO_RESOLUTION] = r } } }
+    fun setSegmentDurationMin(m: Int)   { viewModelScope.launch { dataStore.edit { it[KEY_SEGMENT_DURATION] = m } } }
+    fun setAdasSensitivity(s: String)   { viewModelScope.launch { dataStore.edit { it[KEY_ADAS_SENSITIVITY] = s } } }
+    fun setLdwEnabled(v: Boolean)       { adasAnalyzer.ldwEnabled           = v; viewModelScope.launch { dataStore.edit { it[KEY_LDW]        = v } } }
+    fun setFcwEnabled(v: Boolean)       { adasAnalyzer.fcwEnabled           = v; viewModelScope.launch { dataStore.edit { it[KEY_FCW]        = v } } }
+    fun setSignEnabled(v: Boolean)      { adasAnalyzer.signDetectionEnabled = v; viewModelScope.launch { dataStore.edit { it[KEY_SIGN]       = v } } }
+    fun setDmsEnabled(v: Boolean)       { adasAnalyzer.dmsEnabled           = v; viewModelScope.launch { dataStore.edit { it[KEY_DMS]        = v } } }
+    fun setPedestrianEnabled(v: Boolean){ adasAnalyzer.pedestrianEnabled    = v; viewModelScope.launch { dataStore.edit { it[KEY_PEDESTRIAN] = v } } }
 
     // Калибровка ADAS
-    fun setHorizonPosition(v: Float)   = save { it[KEY_HORIZON]    = v.coerceIn(0.2f, 0.7f) }
-    fun setLaneWidthPercent(v: Float)  = save { it[KEY_LANE_WIDTH] = v.coerceIn(0.1f, 0.5f) }
-    fun setVanishingPointX(v: Float)   = save { it[KEY_VP_X]       = v.coerceIn(0.2f, 0.8f) }
-    fun setDangerZoneM(m: Int)         = save { it[KEY_DANGER_M]   = m }
-    fun setWarningZoneM(m: Int)        = save { it[KEY_WARNING_M]  = m }
-    fun setCautionZoneM(m: Int)        = save { it[KEY_CAUTION_M]  = m }
+    fun setHorizonPosition(v: Float)  { viewModelScope.launch { dataStore.edit { it[KEY_HORIZON]    = v.coerceIn(0.2f, 0.7f) } } }
+    fun setLaneWidthPercent(v: Float) { viewModelScope.launch { dataStore.edit { it[KEY_LANE_WIDTH] = v.coerceIn(0.1f, 0.5f) } } }
+    fun setVanishingPointX(v: Float)  { viewModelScope.launch { dataStore.edit { it[KEY_VP_X]       = v.coerceIn(0.2f, 0.8f) } } }
+    fun setDangerZoneM(m: Int)        { viewModelScope.launch { dataStore.edit { it[KEY_DANGER_M]   = m } } }
+    fun setWarningZoneM(m: Int)       { viewModelScope.launch { dataStore.edit { it[KEY_WARNING_M]  = m } } }
+    fun setCautionZoneM(m: Int)       { viewModelScope.launch { dataStore.edit { it[KEY_CAUTION_M]  = m } } }
 
     // SpeedCam
-    fun setSpeedcamUrl(index: Int, url: String) = save {
-        when (index) {
-            1 -> it[KEY_SPEEDCAM_URL1] = url
-            2 -> it[KEY_SPEEDCAM_URL2] = url
-            3 -> it[KEY_SPEEDCAM_URL3] = url
+    fun setSpeedcamUrl(index: Int, url: String) {
+        viewModelScope.launch {
+            dataStore.edit {
+                when (index) {
+                    1 -> it[KEY_SPEEDCAM_URL1] = url
+                    2 -> it[KEY_SPEEDCAM_URL2] = url
+                    3 -> it[KEY_SPEEDCAM_URL3] = url
+                }
+            }
         }
     }
 
@@ -183,8 +188,4 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun clearUpdateResult() { _speedcamUpdateResult.value = null }
-
-    private fun save(block: (MutablePreferences) -> Unit) {
-        viewModelScope.launch { dataStore.edit(block) }
-    }
 }

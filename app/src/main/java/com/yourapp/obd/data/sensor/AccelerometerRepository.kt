@@ -30,18 +30,21 @@ class AccelerometerRepositoryImpl @Inject constructor(
     override fun impactEvents(): Flow<Float> = callbackFlow {
         val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as SensorManager
         val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_LINEAR_ACCELERATION)
-        if (sensor == null) {
-            close() // No sensor available, close the flow
-            return@callbackFlow
-        }
+
         val listener = object : SensorEventListener {
             override fun onSensorChanged(event: SensorEvent) {
-                val x = event.values[0]; val y = event.values[1]; val z = event.values[2]
+                val x = event.values[0]
+                val y = event.values[1]
+                val z = event.values[2]
                 val magnitude = sqrt(x * x + y * y + z * z) / G_FORCE
-                if (magnitude > IMPACT_THRESHOLD_G) trySend(magnitude)
+                if (magnitude > IMPACT_THRESHOLD_G) {
+                    trySend(magnitude)
+                }
             }
+
             override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
         }
+
         sensorManager.registerListener(listener, sensor, SensorManager.SENSOR_DELAY_GAME)
         awaitClose { sensorManager.unregisterListener(listener) }
     }
