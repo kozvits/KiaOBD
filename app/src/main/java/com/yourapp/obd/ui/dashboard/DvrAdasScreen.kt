@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.yourapp.obd.data.bluetooth.ConnectionState
 import com.yourapp.obd.domain.model.AdasAlert
 import com.yourapp.obd.domain.model.AlertLevel
 import com.yourapp.obd.ui.theme.AccentCyan
@@ -47,10 +48,11 @@ import com.yourapp.obd.ui.theme.GreenOk
 fun DvrAdasScreen(
     viewModel: DashboardViewModel = hiltViewModel()
 ) {
-    val obdData       by viewModel.obdData.collectAsStateWithLifecycle()
-    val lastAlert     by viewModel.lastAlert.collectAsStateWithLifecycle()
-    val isRecording   by viewModel.isRecording.collectAsStateWithLifecycle()
-    val calibration   by viewModel.adasCalibration.collectAsStateWithLifecycle()
+    val obdData          by viewModel.obdData.collectAsStateWithLifecycle()
+    val lastAlert        by viewModel.lastAlert.collectAsStateWithLifecycle()
+    val isRecording      by viewModel.isRecording.collectAsStateWithLifecycle()
+    val connectionState  by viewModel.connectionState.collectAsStateWithLifecycle()
+    val calibration      by viewModel.adasCalibration.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val laneColor = if (lastAlert is AdasAlert.LaneDeparture) Color(0xCCFF1744) else Color(0xBB00E676)
@@ -174,6 +176,14 @@ fun DvrAdasScreen(
                 }
             }
         }
+
+        // ── 6. OBD статус ─────────────────────────────────────────────────────
+        ObdStatusLine(
+            connectionState = connectionState,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(start = 8.dp, bottom = 4.dp)
+        )
     }
 }
 
@@ -298,6 +308,32 @@ private fun AdasAlertBanner(alert: AdasAlert, modifier: Modifier) {
             fontWeight = FontWeight.Bold,
             fontSize   = 17.sp,
             modifier   = Modifier.padding(horizontal = 28.dp, vertical = 12.dp)
+        )
+    }
+}
+
+@Composable
+private fun ObdStatusLine(
+    connectionState: ConnectionState,
+    modifier: Modifier
+) {
+    val (text, color) = when (connectionState) {
+        ConnectionState.CONNECTED -> "OBD: Подключено" to GreenOk
+        ConnectionState.CONNECTING -> "OBD: Подключение..." to AlertYellow
+        ConnectionState.ERROR -> "OBD: Ошибка" to AlertRed
+        ConnectionState.DISCONNECTED -> "OBD: Отключён" to Color.Gray
+    }
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.55f)),
+        shape = RoundedCornerShape(8.dp),
+        modifier = modifier
+    ) {
+        Text(
+            text = text,
+            color = color,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
         )
     }
 }

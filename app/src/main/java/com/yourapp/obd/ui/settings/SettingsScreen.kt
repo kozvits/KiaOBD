@@ -14,11 +14,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Refresh
@@ -72,15 +72,30 @@ import java.util.Locale
 @Composable
 fun SettingsScreen(
     onBack: () -> Unit,
+    scrollToSection: String? = null,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val state          by viewModel.settingsState.collectAsStateWithLifecycle()
     val isUpdating     by viewModel.isUpdatingSpeedcam.collectAsStateWithLifecycle()
     val updateResult   by viewModel.speedcamUpdateResult.collectAsStateWithLifecycle()
     val snackbar       = remember { SnackbarHostState() }
+    val listState      = rememberLazyListState()
+
+    val sectionIndex = when (scrollToSection) {
+        "adas_calibration" -> 3
+        "adas_sensitivity" -> 4
+        "adas_modules"     -> 5
+        else -> null
+    }
 
     LaunchedEffect(updateResult) {
         updateResult?.let { snackbar.showSnackbar(it); viewModel.clearUpdateResult() }
+    }
+
+    LaunchedEffect(sectionIndex) {
+        if (sectionIndex != null) {
+            listState.animateScrollToItem(sectionIndex)
+        }
     }
 
     Scaffold(
@@ -102,169 +117,170 @@ fun SettingsScreen(
         },
         containerColor = DarkBackground
     ) { padding ->
-        Column(
+        LazyColumn(
+            state = listState,
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(16.dp)
-                .verticalScroll(rememberScrollState()),
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // ── Bluetooth OBD-II ─────────────────────────────────────────────
-            SectionCard("Bluetooth OBD-II") {
-                BluetoothDeviceSelector(state.selectedDeviceAddress, viewModel)
-            }
-
-            // ── Видеорегистратор ─────────────────────────────────────────────
-            SectionCard("Видеорегистратор") {
-                DropdownSetting("Разрешение видео", state.videoResolution,
-                    listOf("FHD" to "1080p Full HD", "HD" to "720p HD", "SD" to "480p SD")
-                ) { viewModel.setVideoResolution(it) }
-                Spacer(Modifier.height(8.dp))
-                DropdownSetting("Длительность ролика", state.segmentDurationMin.toString(),
-                    listOf("1" to "1 мин","3" to "3 мин","5" to "5 мин","10" to "10 мин","15" to "15 мин")
-                ) { viewModel.setSegmentDurationMin(it.toInt()) }
-                Spacer(Modifier.height(8.dp))
-                DropdownSetting("Размер буфера", state.bufferSizeGb.toString(),
-                    listOf("1" to "1 ГБ","2" to "2 ГБ","4" to "4 ГБ","8" to "8 ГБ","16" to "16 ГБ")
-                ) { viewModel.setBufferSizeGb(it.toInt()) }
-            }
-
-            // ── Базы SpeedCam ────────────────────────────────────────────────
-            SectionCard("Базы камер SpeedCam") {
-                Text("Источники URL для обновления баз камер контроля скорости",
-                    color = Color.Gray, fontSize = 12.sp,
-                    modifier = Modifier.padding(bottom = 8.dp))
-                UrlInputField("Источник 1", state.speedcamUrl1) { viewModel.setSpeedcamUrl(1, it) }
-                Spacer(Modifier.height(8.dp))
-                UrlInputField("Источник 2", state.speedcamUrl2) { viewModel.setSpeedcamUrl(2, it) }
-                Spacer(Modifier.height(8.dp))
-                UrlInputField("Источник 3", state.speedcamUrl3) { viewModel.setSpeedcamUrl(3, it) }
-                Spacer(Modifier.height(12.dp))
-                if (state.speedcamLastUpdate > 0L) {
-                    Text(
-                        "Обновлено: ${SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date(state.speedcamLastUpdate))}",
-                        color = Color.Gray, fontSize = 11.sp,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
+            item(key = "bluetooth") {
+                SectionCard("Bluetooth OBD-II") {
+                    BluetoothDeviceSelector(state.selectedDeviceAddress, viewModel)
                 }
-                Button(
-                    onClick = { viewModel.updateSpeedcamDatabases() },
-                    enabled = !isUpdating,
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = AccentCyan, disabledContainerColor = Color.DarkGray),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    if (isUpdating) {
-                        CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
-                        Spacer(Modifier.width(8.dp))
-                        Text("Обновление...", color = Color.White)
-                    } else {
-                        Icon(Icons.Default.Refresh, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Обновить базы", color = Color.White)
+            }
+
+            item(key = "video") {
+                SectionCard("Видеорегистратор") {
+                    DropdownSetting("Разрешение видео", state.videoResolution,
+                        listOf("FHD" to "1080p Full HD", "HD" to "720p HD", "SD" to "480p SD")
+                    ) { viewModel.setVideoResolution(it) }
+                    Spacer(Modifier.height(8.dp))
+                    DropdownSetting("Длительность ролика", state.segmentDurationMin.toString(),
+                        listOf("1" to "1 мин","3" to "3 мин","5" to "5 мин","10" to "10 мин","15" to "15 мин")
+                    ) { viewModel.setSegmentDurationMin(it.toInt()) }
+                    Spacer(Modifier.height(8.dp))
+                    DropdownSetting("Размер буфера", state.bufferSizeGb.toString(),
+                        listOf("1" to "1 ГБ","2" to "2 ГБ","4" to "4 ГБ","8" to "8 ГБ","16" to "16 ГБ")
+                    ) { viewModel.setBufferSizeGb(it.toInt()) }
+                }
+            }
+
+            item(key = "speedcam") {
+                SectionCard("Базы камер SpeedCam") {
+                    Text("Источники URL для обновления баз камер контроля скорости",
+                        color = Color.Gray, fontSize = 12.sp,
+                        modifier = Modifier.padding(bottom = 8.dp))
+                    UrlInputField("Источник 1", state.speedcamUrl1) { viewModel.setSpeedcamUrl(1, it) }
+                    Spacer(Modifier.height(8.dp))
+                    UrlInputField("Источник 2", state.speedcamUrl2) { viewModel.setSpeedcamUrl(2, it) }
+                    Spacer(Modifier.height(8.dp))
+                    UrlInputField("Источник 3", state.speedcamUrl3) { viewModel.setSpeedcamUrl(3, it) }
+                    Spacer(Modifier.height(12.dp))
+                    if (state.speedcamLastUpdate > 0L) {
+                        Text(
+                            "Обновлено: ${SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date(state.speedcamLastUpdate))}",
+                            color = Color.Gray, fontSize = 11.sp,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        )
+                    }
+                    Button(
+                        onClick = { viewModel.updateSpeedcamDatabases() },
+                        enabled = !isUpdating,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = AccentCyan, disabledContainerColor = Color.DarkGray),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        if (isUpdating) {
+                            CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Обновление...", color = Color.White)
+                        } else {
+                            Icon(Icons.Default.Refresh, null, tint = Color.White, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Обновить базы", color = Color.White)
+                        }
                     }
                 }
             }
 
-            // ── Калибровка ADAS ──────────────────────────────────────────────
-            SectionCard("Калибровка ADAS") {
-                Text(
-                    "Настройте параметры сетки под реальный вид дороги с камеры вашего автомобиля",
-                    color = Color.Gray, fontSize = 12.sp,
-                    modifier = Modifier.padding(bottom = 12.dp)
-                )
+            item(key = "adas_calibration") {
+                SectionCard("Калибровка ADAS") {
+                    Text(
+                        "Настройте параметры сетки под реальный вид дороги с камеры вашего автомобиля",
+                        color = Color.Gray, fontSize = 12.sp,
+                        modifier = Modifier.padding(bottom = 12.dp)
+                    )
 
-                // Горизонт
-                SliderSetting(
-                    label = "Линия горизонта",
-                    value = state.horizonPosition,
-                    range = 0.25f..0.65f,
-                    displayValue = "${"%.0f".format(state.horizonPosition * 100)}% от верха",
-                    onValueChange = { viewModel.setHorizonPosition(it) }
-                )
+                    SliderSetting(
+                        label = "Линия горизонта",
+                        value = state.horizonPosition,
+                        range = 0.25f..0.65f,
+                        displayValue = "${"%.0f".format(state.horizonPosition * 100)}% от верха",
+                        onValueChange = { viewModel.setHorizonPosition(it) }
+                    )
 
-                Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(8.dp))
 
-                // Ширина полосы
-                SliderSetting(
-                    label = "Ширина полосы",
-                    value = state.laneWidthPercent,
-                    range = 0.10f..0.45f,
-                    displayValue = "${"%.0f".format(state.laneWidthPercent * 100)}% ширины экрана",
-                    onValueChange = { viewModel.setLaneWidthPercent(it) }
-                )
+                    SliderSetting(
+                        label = "Ширина полосы",
+                        value = state.laneWidthPercent,
+                        range = 0.10f..0.45f,
+                        displayValue = "${"%.0f".format(state.laneWidthPercent * 100)}% ширины экрана",
+                        onValueChange = { viewModel.setLaneWidthPercent(it) }
+                    )
 
-                Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(8.dp))
 
-                // Смещение точки схода
-                SliderSetting(
-                    label = "Точка схода (горизонт X)",
-                    value = state.vanishingPointX,
-                    range = 0.25f..0.75f,
-                    displayValue = "${"%.0f".format(state.vanishingPointX * 100)}% от левого края",
-                    onValueChange = { viewModel.setVanishingPointX(it) }
-                )
+                    SliderSetting(
+                        label = "Точка схода (горизонт X)",
+                        value = state.vanishingPointX,
+                        range = 0.25f..0.75f,
+                        displayValue = "${"%.0f".format(state.vanishingPointX * 100)}% от левого края",
+                        onValueChange = { viewModel.setVanishingPointX(it) }
+                    )
 
-                Spacer(Modifier.height(16.dp))
-                Text("Зоны расстояний", color = AccentCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                Spacer(Modifier.height(8.dp))
+                    Spacer(Modifier.height(16.dp))
+                    Text("Зоны расстояний", color = AccentCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.height(8.dp))
 
-                // Зона DANGER
-                DropdownSetting("Зона ОПАСНОСТЬ (красная)", state.dangerZoneM.toString(),
-                    listOf("3" to "3 м","5" to "5 м","7" to "7 м","10" to "10 м")
-                ) { viewModel.setDangerZoneM(it.toInt()) }
-                Spacer(Modifier.height(8.dp))
+                    DropdownSetting("Зона ОПАСНОСТЬ (красная)", state.dangerZoneM.toString(),
+                        listOf("3" to "3 м","5" to "5 м","7" to "7 м","10" to "10 м")
+                    ) { viewModel.setDangerZoneM(it.toInt()) }
+                    Spacer(Modifier.height(8.dp))
 
-                // Зона WARNING
-                DropdownSetting("Зона ВНИМАНИЕ (оранжевая)", state.warningZoneM.toString(),
-                    listOf("8" to "8 м","10" to "10 м","15" to "15 м","20" to "20 м")
-                ) { viewModel.setWarningZoneM(it.toInt()) }
-                Spacer(Modifier.height(8.dp))
+                    DropdownSetting("Зона ВНИМАНИЕ (оранжевая)", state.warningZoneM.toString(),
+                        listOf("8" to "8 м","10" to "10 м","15" to "15 м","20" to "20 м")
+                    ) { viewModel.setWarningZoneM(it.toInt()) }
+                    Spacer(Modifier.height(8.dp))
 
-                // Зона CAUTION
-                DropdownSetting("Зона ОСТОРОЖНО (жёлтая)", state.cautionZoneM.toString(),
-                    listOf("15" to "15 м","20" to "20 м","25" to "25 м","30" to "30 м")
-                ) { viewModel.setCautionZoneM(it.toInt()) }
+                    DropdownSetting("Зона ОСТОРОЖНО (жёлтая)", state.cautionZoneM.toString(),
+                        listOf("15" to "15 м","20" to "20 м","25" to "25 м","30" to "30 м")
+                    ) { viewModel.setCautionZoneM(it.toInt()) }
 
-                Spacer(Modifier.height(12.dp))
+                    Spacer(Modifier.height(12.dp))
 
-                // Кнопка сброса к умолчаниям
-                Button(
-                    onClick = {
-                        viewModel.setHorizonPosition(0.42f)
-                        viewModel.setLaneWidthPercent(0.28f)
-                        viewModel.setVanishingPointX(0.5f)
-                        viewModel.setDangerZoneM(5)
-                        viewModel.setWarningZoneM(10)
-                        viewModel.setCautionZoneM(20)
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2D2D2D)),
-                    shape = RoundedCornerShape(10.dp)
-                ) {
-                    Text("Сбросить к умолчаниям", color = Color.Gray)
+                    Button(
+                        onClick = {
+                            viewModel.setHorizonPosition(0.42f)
+                            viewModel.setLaneWidthPercent(0.28f)
+                            viewModel.setVanishingPointX(0.5f)
+                            viewModel.setDangerZoneM(5)
+                            viewModel.setWarningZoneM(10)
+                            viewModel.setCautionZoneM(20)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF2D2D2D)),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text("Сбросить к умолчаниям", color = Color.Gray)
+                    }
                 }
             }
 
-            // ── ADAS Чувствительность ────────────────────────────────────────
-            SectionCard("ADAS — Чувствительность") {
-                DropdownSetting("Чувствительность", state.adasSensitivity,
-                    listOf("LOW" to "Низкая","MEDIUM" to "Средняя","HIGH" to "Высокая")
-                ) { viewModel.setAdasSensitivity(it) }
+            item(key = "adas_sensitivity") {
+                SectionCard("ADAS — Чувствительность") {
+                    DropdownSetting("Чувствительность", state.adasSensitivity,
+                        listOf("LOW" to "Низкая","MEDIUM" to "Средняя","HIGH" to "Высокая")
+                    ) { viewModel.setAdasSensitivity(it) }
+                }
             }
 
-            // ── ADAS Модули ──────────────────────────────────────────────────
-            SectionCard("ADAS — Модули") {
-                SettingsSwitch("LDW — Выезд из полосы",              state.ldwEnabled)            { viewModel.setLdwEnabled(it) }
-                SettingsSwitch("FCW — Предупреждение о столкновении", state.fcwEnabled)            { viewModel.setFcwEnabled(it) }
-                SettingsSwitch("Детекция знаков скорости",            state.signEnabled)           { viewModel.setSignEnabled(it) }
-                SettingsSwitch("DMS — Усталость водителя",            state.dmsEnabled)            { viewModel.setDmsEnabled(it) }
-                SettingsSwitch("Детекция пешеходов",                  state.pedestrianEnabled)     { viewModel.setPedestrianEnabled(it) }
+            item(key = "adas_modules") {
+                SectionCard("ADAS — Модули") {
+                    SettingsSwitch("LDW — Выезд из полосы",              state.ldwEnabled)            { viewModel.setLdwEnabled(it) }
+                    SettingsSwitch("FCW — Предупреждение о столкновении", state.fcwEnabled)            { viewModel.setFcwEnabled(it) }
+                    SettingsSwitch("Детекция знаков скорости",            state.signEnabled)           { viewModel.setSignEnabled(it) }
+                    SettingsSwitch("DMS — Усталость водителя",            state.dmsEnabled)            { viewModel.setDmsEnabled(it) }
+                    SettingsSwitch("Детекция пешеходов",                  state.pedestrianEnabled)     { viewModel.setPedestrianEnabled(it) }
+                }
             }
 
-            Spacer(Modifier.height(16.dp))
+            item {
+                Spacer(Modifier.height(16.dp))
+            }
         }
     }
 }

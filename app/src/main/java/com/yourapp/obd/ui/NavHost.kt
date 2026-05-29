@@ -16,10 +16,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.yourapp.obd.ui.dashboard.DashboardScreen
 import com.yourapp.obd.ui.dashboard.DvrAdasScreen
 import com.yourapp.obd.ui.dtc.DtcScreen
@@ -92,23 +94,41 @@ fun KiaOBDNavHost() {
                     MenuScreen(
                         onNavigateToDtc = { navController.navigate(Routes.DTC) },
                         onNavigateToPlayer = { navController.navigate(Routes.PLAYER) },
-                        onNavigateToSettings = { navController.navigate(Routes.SETTINGS) },
+                        onNavigateToSettings = { section ->
+                            navController.navigate("${Routes.SETTINGS}?section=${section.orEmpty()}") {
+                                launchSingleTop = true
+                            }
+                        },
                         onNavigateToDvr = {
                             navController.navigate(Routes.DVR_ADAS) {
-                                popUpTo(Routes.DVR_ADAS) { inclusive = true }
+                                popUpTo(Routes.DVR_ADAS) { saveState = true }
                                 launchSingleTop = true
+                                restoreState = true
                             }
                         },
                         onNavigateToDashboard = {
                             navController.navigate(Routes.COMPUTER) {
-                                popUpTo(Routes.COMPUTER) { inclusive = true }
+                                popUpTo(Routes.COMPUTER) { saveState = true }
                                 launchSingleTop = true
+                                restoreState = true
                             }
                         }
                     )
                 }
-                composable(Routes.SETTINGS) {
-                    SettingsScreen(onBack = { navController.popBackStack() })
+                composable(
+                    route = "settings?section={section}",
+                    arguments = listOf(navArgument("section") {
+                        type = NavType.StringType
+                        defaultValue = ""
+                        nullable = false
+                    })
+                ) { backStackEntry ->
+                    val section = backStackEntry.arguments?.getString("section")
+                        ?.ifBlank { null }
+                    SettingsScreen(
+                        onBack = { navController.popBackStack() },
+                        scrollToSection = section
+                    )
                 }
                 composable(Routes.DTC) {
                     DtcScreen(onBack = { navController.popBackStack() })

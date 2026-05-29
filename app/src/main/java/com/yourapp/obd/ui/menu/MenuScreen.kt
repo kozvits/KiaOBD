@@ -56,7 +56,7 @@ import com.yourapp.obd.ui.theme.DarkSurface
 fun MenuScreen(
     onNavigateToDtc: () -> Unit,
     onNavigateToPlayer: () -> Unit,
-    onNavigateToSettings: () -> Unit,
+    onNavigateToSettings: (section: String?) -> Unit,
     onNavigateToDvr: () -> Unit,
     onNavigateToDashboard: () -> Unit
 ) {
@@ -123,19 +123,19 @@ fun MenuScreen(
                 icon = Icons.Default.Sensors,
                 label = "Калибровка сетки",
                 desc = "Горизонт, ширина полосы, зоны",
-                onClick = onNavigateToSettings
+                onClick = { onNavigateToSettings("adas_calibration") }
             )
             MenuItem(
                 icon = Icons.Default.ListAlt,
                 label = "Чувствительность",
                 desc = "Пороги срабатывания LDW/FCW",
-                onClick = onNavigateToSettings
+                onClick = { onNavigateToSettings("adas_sensitivity") }
             )
             MenuItem(
                 icon = Icons.Default.AirportShuttle,
                 label = "Модули",
                 desc = "Включение/отключение функций",
-                onClick = onNavigateToSettings
+                onClick = { onNavigateToSettings("adas_modules") }
             )
         }
 
@@ -148,7 +148,7 @@ fun MenuScreen(
                 icon = Icons.Default.Settings,
                 label = "Все настройки",
                 desc = "OBD-II, видео, SpeedCam, ADAS",
-                onClick = onNavigateToSettings
+                onClick = { onNavigateToSettings(null) }
             )
         }
 

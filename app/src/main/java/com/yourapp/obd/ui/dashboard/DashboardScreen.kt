@@ -291,13 +291,19 @@ private fun ObdStatusLine(
         ConnectionState.ERROR -> "OBD: Ошибка" to AlertRed
         ConnectionState.DISCONNECTED -> "OBD: Отключён" to Color.Gray
     }
-    Text(
-        text = text,
-        color = color,
-        fontSize = 11.sp,
-        fontWeight = FontWeight.Medium,
+    Card(
+        colors = CardDefaults.cardColors(containerColor = Color.Black.copy(alpha = 0.55f)),
+        shape = RoundedCornerShape(8.dp),
         modifier = modifier
-    )
+    ) {
+        Text(
+            text = text,
+            color = color,
+            fontSize = 11.sp,
+            fontWeight = FontWeight.Medium,
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+        )
+    }
 }
 
 @Composable

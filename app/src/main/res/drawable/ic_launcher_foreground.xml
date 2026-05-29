@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!-- Speedometer arc -->
+    <path
+        android:fillColor="#00BCD4"
+        android:pathData="M54,68
+            m-28,0
+            a28,28 0 1,1 56,0
+            a28,28 0 1,1 -56,0" />
+
+    <!-- Inner cutout -->
+    <path
+        android:fillColor="#0A0A0A"
+        android:pathData="M54,68
+            m-20,0
+            a20,20 0 1,1 40,0
+            a20,20 0 1,1 -40,0" />
+
+    <!-- Needle -->
+    <path
+        android:strokeColor="#00BCD4"
+        android:strokeWidth="2.5"
+        android:fillColor="#00000000"
+        android:pathData="M54,68 L54,40" />
+
+    <!-- Center dot -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M51,65 m-3,0 a3,3 0 1,1 6,0 a3,3 0 1,1 -6,0" />
+
+    <!-- Tick marks -->
+    <path
+        android:strokeColor="#00BCD4"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M33,48 L36,51" />
+    <path
+        android:strokeColor="#00BCD4"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M54,35 L54,39" />
+    <path
+        android:strokeColor="#00BCD4"
+        android:strokeWidth="1.5"
+        android:fillColor="#00000000"
+        android:pathData="M75,48 L72,51" />
+
+    <!-- Small ticks -->
+    <path
+        android:strokeColor="#00BCD4"
+        android:strokeWidth="1"
+        android:fillColor="#00000000"
+        android:pathData="M40,39 L42,42" />
+    <path
+        android:strokeColor="#00BCD4"
+        android:strokeWidth="1"
+        android:fillColor="#00000000"
+        android:pathData="M68,39 L66,42" />
+
+    <!-- Car body hint at bottom -->
+    <path
+        android:fillColor="#00BCD4"
+        android:pathData="M40,76 L44,72 L64,72 L68,76 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M42,76 L50,76 L50,80 L42,80 Z" />
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M58,76 L66,76 L66,80 L58,80 Z" />
+
+    <!-- Bluetooth dot -->
+    <path
+        android:fillColor="#00BCD4"
+        android:pathData="M82,26 m-4,0 a4,4 0 1,1 8,0 a4,4 0 1,1 -8,0" />
+</vector>
