@@ -96,6 +96,7 @@ fun KiaOBDNavHost() {
                         onNavigateToPlayer = { navController.navigate(Routes.PLAYER) },
                         onNavigateToSettings = { section ->
                             navController.navigate("${Routes.SETTINGS}?section=${section.orEmpty()}") {
+                                popUpTo(Routes.MENU)
                                 launchSingleTop = true
                             }
                         },
