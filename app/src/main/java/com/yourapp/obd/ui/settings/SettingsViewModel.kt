@@ -16,8 +16,10 @@ import androidx.lifecycle.viewModelScope
 import com.yourapp.obd.data.bluetooth.BluetoothOBDRepository
 import com.yourapp.obd.data.camera.AdasAnalyzer
 import com.yourapp.obd.data.camera.CameraRepository
+import com.yourapp.obd.data.speedcam.SpeedCamConstants
 import com.yourapp.obd.data.speedcam.SpeedCamNotificationHelper
 import com.yourapp.obd.data.speedcam.SpeedCamRepository
+import com.yourapp.obd.data.speedcam.SpeedCamSourceProvider
 import com.yourapp.obd.data.speedcam.SpeedCamUpdateWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -170,6 +172,33 @@ class SettingsViewModel @Inject constructor(
                     2 -> it[KEY_SPEEDCAM_URL2] = url
                     3 -> it[KEY_SPEEDCAM_URL3] = url
                 }
+            }
+        }
+    }
+
+    fun applySpeedcamPreset(index: Int) {
+        val preset = com.yourapp.obd.data.speedcam.SpeedCamConstants.PRESETS.getOrNull(index) ?: return
+        viewModelScope.launch {
+            dataStore.edit {
+                it[KEY_SPEEDCAM_URL1] = preset.url1
+                it[KEY_SPEEDCAM_URL2] = preset.url2
+                it[KEY_SPEEDCAM_URL3] = preset.url3
+            }
+        }
+    }
+
+    fun applyCountryPreset() {
+        val countryName = com.yourapp.obd.data.speedcam.SpeedCamSourceProvider.extractCountryName()
+        val overpassUrl = if (countryName != null) {
+            com.yourapp.obd.data.speedcam.SpeedCamSourceProvider.buildOverpassUrl(countryName)
+        } else {
+            com.yourapp.obd.data.speedcam.SpeedCamSourceProvider.buildOverpassUrl()
+        }
+        viewModelScope.launch {
+            dataStore.edit {
+                it[KEY_SPEEDCAM_URL1] = overpassUrl
+                it[KEY_SPEEDCAM_URL2] = ""
+                it[KEY_SPEEDCAM_URL3] = ""
             }
         }
     }

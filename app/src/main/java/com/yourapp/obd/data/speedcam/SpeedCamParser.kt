@@ -69,6 +69,8 @@ object SpeedCamParser {
             .takeIf { it > 0 }
             ?: props.optInt("maxSpeed", -1).takeIf { it > 0 }
             ?: props.optInt("limit", -1).takeIf { it > 0 }
+            ?: props.optString("vitesse").toIntOrNull()?.takeIf { it > 0 }
+            ?: props.optString("speed").toIntOrNull()?.takeIf { it > 0 }
 
         val active = props.optBoolean("active", true)
             .takeIf { it } ?: props.optBoolean("isActive", true)
@@ -111,7 +113,9 @@ object SpeedCamParser {
             val values = line.split(",").map { it.trim() }
             if (values.size < headers.size) return@mapNotNull null
 
-            val map = headers.zip(values).toMap()
+            val raw = headers.zip(values).toMap()
+
+            val map = mapCsvAliases(raw)
 
             val id = map["id"] ?: hash(line)
             val lat = map["lat"]?.toDoubleOrNull() ?: map["latitude"]?.toDoubleOrNull() ?: return@mapNotNull null
@@ -121,29 +125,112 @@ object SpeedCamParser {
             val type = try { SpeedCamType.valueOf(typeStr.uppercase()) }
                 catch (_: Exception) { SpeedCamType.UNKNOWN }
 
-            val speedLimit = map["speed_limit"]?.toIntOrNull() ?: map["maxspeed"]?.toIntOrNull()
+            val speedLimit = map["speed_limit"]?.toIntOrNull()
+                ?: map["maxspeed"]?.toIntOrNull()
+                ?: map["vitesse_vehicules_legers_kmh"]?.toIntOrNull()
+                ?: map["vma"]?.toIntOrNull()
+
+            val equipement = map["equipement"].orEmpty()
+            val camType = when {
+                type != SpeedCamType.UNKNOWN -> type.name
+                equipement.contains("ETT") || equipement.contains("ETF") || equipement.contains("ETD") -> "SPEED"
+                equipement.contains("ETFR") || equipement.contains("RADAR_FEU") -> "REDLIGHT"
+                equipement.contains("ETVM") || equipement.contains("RADAR_TRONCON") -> "AVERAGE"
+                equipement.contains("MOBILE") || equipement.contains("CHANTIER") -> "MOBILE"
+                else -> typeStr.uppercase().takeIf { it.isNotBlank() } ?: "UNKNOWN"
+            }
 
             SpeedCam(
                 id = id,
                 latitude = lat,
                 longitude = lng,
-                type = type,
+                type = try { SpeedCamType.valueOf(camType) } catch (_: Exception) { SpeedCamType.UNKNOWN },
                 speedLimitKmh = speedLimit,
                 direction = map["direction"]?.takeIf { it.isNotBlank() },
-                road = map["road"]?.takeIf { it.isNotBlank() },
+                road = map["road"]?.takeIf { it.isNotBlank() }
+                    ?: map["route"]?.takeIf { it.isNotBlank() },
                 isActive = (map["active"] ?: "true").toBooleanStrictOrNull() ?: true,
-                installedAt = parseTimestamp(map["installed_at"]),
-                updatedAt = parseTimestamp(map["updated_at"]) ?: System.currentTimeMillis(),
-                hash = hash(id, lat.toString(), lng.toString(), typeStr, speedLimit?.toString())
+                installedAt = parseTimestamp(map["installed_at"])
+                    ?: parseTimestamp(map["date_installation"]),
+                updatedAt = parseTimestamp(map["updated_at"])
+                    ?: parseTimestamp(map["date_heure_dernier_changement"])
+                    ?: System.currentTimeMillis(),
+                hash = hash(id, lat.toString(), lng.toString(), camType, speedLimit?.toString())
             )
         }
 
         return ParseResult(cameras, null, null)
     }
 
+    private val CSV_ALIASES = mapOf(
+        "equipement" to "type",
+        "vitesse_vehicules_legers_kmh" to "speed_limit",
+        "date_installation" to "installed_at",
+        "date_heure_dernier_changement" to "updated_at",
+        "voie" to "road",
+        "vma" to "speed_limit",
+        "maxspeed" to "speed_limit"
+    )
+
+    private fun mapCsvAliases(raw: Map<String, String>): Map<String, String> {
+        val result = raw.toMutableMap()
+        for ((alias, canonical) in CSV_ALIASES) {
+            val value = raw[alias]
+            if (value != null && canonical !in result) {
+                result[canonical] = value
+            }
+        }
+        return result
+    }
+
+    fun parseOsmJson(json: String): ParseResult {
+        val root = JSONObject(json)
+        val elements = root.optJSONArray("elements") ?: return ParseResult(emptyList(), root.optString("version").ifBlank { null }, null)
+        val cameras = mutableListOf<SpeedCam>()
+        for (i in 0 until elements.length()) {
+            val el = elements.getJSONObject(i)
+            val tags = el.optJSONObject("tags") ?: continue
+            if (!tags.optString("highway", "").startsWith("speed") &&
+                !tags.optString("enforcement", "").startsWith("speed")) continue
+
+            val id = "osm_${el.optLong("id", 0)}"
+            val lat = el.optDouble("lat", 0.0)
+            val lon = el.optDouble("lon", 0.0)
+            if (lat == 0.0 && lon == 0.0) continue
+
+            val maxspeed = tags.optString("maxspeed").toIntOrNull()
+            val direction = tags.optString("direction").ifBlank { null }
+            val camType = when {
+                tags.optString("enforcement") == "maxspeed" -> "SPEED"
+                tags.optString("highway") == "speed_display" -> "SPEED"
+                tags.optString("enforcement") == "red_light" -> "REDLIGHT"
+                else -> "SPEED"
+            }
+            val road = tags.optString("name").ifBlank { null }
+                ?: tags.optString("ref").ifBlank { null }
+
+            cameras.add(SpeedCam(
+                id = id,
+                latitude = lat,
+                longitude = lon,
+                type = try { SpeedCamType.valueOf(camType) } catch (_: Exception) { SpeedCamType.UNKNOWN },
+                speedLimitKmh = maxspeed,
+                direction = direction,
+                road = road,
+                isActive = true,
+                installedAt = null,
+                updatedAt = System.currentTimeMillis(),
+                hash = hash(id, lat.toString(), lon.toString(), camType, maxspeed?.toString())
+            ))
+        }
+        return ParseResult(cameras, root.optString("version").ifBlank { null }, null)
+    }
+
     fun parseAuto(data: String): ParseResult {
         val trimmed = data.trim()
+        val firstLine = trimmed.lines().firstOrNull().orEmpty()
         return when {
+            firstLine.contains("\"elements\"") || firstLine.contains("highway=speed_camera") -> parseOsmJson(trimmed)
             trimmed.startsWith("{") -> parseJson(trimmed)
             trimmed.startsWith("[") -> parseJson("""{"cameras": $trimmed}""")
             trimmed.contains(",") && trimmed.lines().size > 1 -> parseCsv(trimmed)

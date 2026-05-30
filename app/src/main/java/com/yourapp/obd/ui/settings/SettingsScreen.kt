@@ -12,8 +12,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -21,7 +23,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -152,6 +156,14 @@ fun SettingsScreen(
                     Text("Источники URL для обновления баз камер контроля скорости",
                         color = Color.Gray, fontSize = 12.sp,
                         modifier = Modifier.padding(bottom = 8.dp))
+
+                    PresetSelector(
+                        presets = com.yourapp.obd.data.speedcam.SpeedCamConstants.PRESETS,
+                        onSelectPreset = { index -> viewModel.applySpeedcamPreset(index) },
+                        onAutoDetect = { viewModel.applyCountryPreset() }
+                    )
+
+                    Spacer(Modifier.height(8.dp))
                     UrlInputField("Источник 1", state.speedcamUrl1) { viewModel.setSpeedcamUrl(1, it) }
                     Spacer(Modifier.height(8.dp))
                     UrlInputField("Источник 2", state.speedcamUrl2) { viewModel.setSpeedcamUrl(2, it) }
@@ -432,6 +444,73 @@ private fun BluetoothDeviceSelector(selectedAddress: String, viewModel: Settings
                     },
                     onClick = { viewModel.selectDevice(dev.address); expanded = false }
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PresetSelector(
+    presets: List<com.yourapp.obd.data.speedcam.SpeedCamConstants.SourcePreset>,
+    onSelectPreset: (Int) -> Unit,
+    onAutoDetect: () -> Unit
+) {
+    var expanded by remember { mutableStateOf(false) }
+    val selectedLabel = "Выберите предустановку..."
+
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { expanded = true }
+                        .background(DarkSurface, RoundedCornerShape(8.dp))
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = selectedLabel,
+                        color = Color.Gray,
+                        fontSize = 12.sp,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Icon(Icons.Default.ExpandMore, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
+                }
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false },
+                    modifier = Modifier.background(DarkSurface).widthIn(max = 320.dp)
+                ) {
+                    presets.forEachIndexed { index, preset ->
+                        DropdownMenuItem(
+                            text = {
+                                Column {
+                                    Text(preset.name, color = Color.White, fontSize = 13.sp)
+                                    Text(preset.description, color = Color.Gray, fontSize = 10.sp)
+                                }
+                            },
+                            onClick = {
+                                expanded = false
+                                onSelectPreset(index)
+                            }
+                        )
+                    }
+                }
+            }
+            Button(
+                onClick = onAutoDetect,
+                colors = ButtonDefaults.buttonColors(containerColor = DarkSurface),
+                shape = RoundedCornerShape(8.dp),
+                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+            ) {
+                Icon(Icons.Default.Sensors, null, tint = AccentCyan, modifier = Modifier.size(14.dp))
+                Spacer(Modifier.width(4.dp))
+                Text("Авто", color = AccentCyan, fontSize = 11.sp)
             }
         }
     }
