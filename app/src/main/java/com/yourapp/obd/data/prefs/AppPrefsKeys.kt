@@ -24,6 +24,8 @@ object AppPrefsKeys {
     val SPEEDCAM_URL2       = stringPreferencesKey("speedcam_url2")
     val SPEEDCAM_URL3       = stringPreferencesKey("speedcam_url3")
     val SPEEDCAM_LAST_UPD   = stringPreferencesKey("speedcam_last_update")
+    val SPEEDCAM_AUTO_UPD   = booleanPreferencesKey("speedcam_auto_update")
+    val SPEEDCAM_LAST_RESULT = stringPreferencesKey("speedcam_last_result")
     // ADAS calibration
     val ADAS_HORIZON        = floatPreferencesKey("adas_horizon_pct")
     val ADAS_LANE_WIDTH     = floatPreferencesKey("adas_lane_width_pct")

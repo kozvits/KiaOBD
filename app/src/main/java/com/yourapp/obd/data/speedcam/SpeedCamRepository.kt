@@ -24,8 +24,6 @@ class SpeedCamRepository @Inject constructor(
         private const val TAG = "SpeedCamRepo"
         val KEY_LAST_UPDATE_RESULT = stringPreferencesKey("speedcam_last_result")
         val KEY_LAST_UPDATE_TIMESTAMP = longPreferencesKey("speedcam_last_update_ts")
-        val KEY_AUTO_UPDATE_ENABLED = longPreferencesKey("speedcam_auto_update")
-        val KEY_DB_VERSION = longPreferencesKey("speedcam_db_version")
     }
 
     private val updateMutex = Mutex()
@@ -38,16 +36,8 @@ class SpeedCamRepository @Inject constructor(
         p[KEY_LAST_UPDATE_RESULT]
     }
 
-    val isAutoUpdateEnabled: Flow<Boolean> = dataStore.data.map { p ->
-        (p[KEY_AUTO_UPDATE_ENABLED] ?: 1L) == 1L
-    }
-
     val allActiveFlow: Flow<List<SpeedCam>> = dao.getAllActiveFlow().map { entities ->
         entities.map { it.toDomain() }
-    }
-
-    suspend fun setAutoUpdateEnabled(enabled: Boolean) {
-        dataStore.edit { it[KEY_AUTO_UPDATE_ENABLED] = if (enabled) 1L else 0L }
     }
 
     suspend fun updateFromSources(urls: List<String>): SpeedCamUpdateStats {
@@ -67,24 +57,22 @@ class SpeedCamRepository @Inject constructor(
         val allCameras = mutableMapOf<String, SpeedCam>()
 
         for (source in sources) {
-            when (val result = source.fetch()) {
-                is Result.Success -> {
-                    result.getOrThrow().forEach { cam ->
-                        if (cam.latitude in -90.0..90.0 && cam.longitude in -180.0..180.0) {
-                            val existing = allCameras[cam.id]
-                            if (existing == null || cam.updatedAt > existing.updatedAt) {
-                                allCameras[cam.id] = cam
-                            }
-                        } else {
-                            Log.w(TAG, "Невалидные координаты: ${cam.latitude}, ${cam.longitude}")
+            val fetchResult = source.fetch()
+            if (fetchResult.isSuccess) {
+                fetchResult.getOrThrow().forEach { cam ->
+                    if (cam.latitude in -90.0..90.0 && cam.longitude in -180.0..180.0) {
+                        val existing = allCameras[cam.id]
+                        if (existing == null || cam.updatedAt > existing.updatedAt) {
+                            allCameras[cam.id] = cam
                         }
+                    } else {
+                        Log.w(TAG, "Невалидные координаты: ${cam.latitude}, ${cam.longitude}")
                     }
-                    processed++
                 }
-                is Result.Failure -> {
-                    Log.e(TAG, "Ошибка источника ${source.name}: ${result.exceptionOrNull()?.message}")
-                    failed++
-                }
+                processed++
+            } else {
+                Log.e(TAG, "Ошибка источника ${source.name}: ${fetchResult.exceptionOrNull()?.message}")
+                failed++
             }
         }
 

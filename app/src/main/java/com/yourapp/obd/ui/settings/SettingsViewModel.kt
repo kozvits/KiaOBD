@@ -16,6 +16,9 @@ import androidx.lifecycle.viewModelScope
 import com.yourapp.obd.data.bluetooth.BluetoothOBDRepository
 import com.yourapp.obd.data.camera.AdasAnalyzer
 import com.yourapp.obd.data.camera.CameraRepository
+import com.yourapp.obd.data.speedcam.SpeedCamNotificationHelper
+import com.yourapp.obd.data.speedcam.SpeedCamRepository
+import com.yourapp.obd.data.speedcam.SpeedCamUpdateWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,17 +42,19 @@ data class SettingsState(
     val dmsEnabled: Boolean = true,
     val pedestrianEnabled: Boolean = true,
     // Калибровка ADAS
-    val horizonPosition: Float = 0.42f,     // 0.0..1.0 — позиция горизонта
-    val laneWidthPercent: Float = 0.28f,    // 0.1..0.5 — ширина полосы у основания
-    val vanishingPointX: Float = 0.5f,      // 0.0..1.0 — смещение точки схода по X
-    val dangerZoneM: Int = 5,               // метры для зоны DANGER
-    val warningZoneM: Int = 10,             // метры для зоны WARNING
-    val cautionZoneM: Int = 20,             // метры для зоны CAUTION
+    val horizonPosition: Float = 0.42f,
+    val laneWidthPercent: Float = 0.28f,
+    val vanishingPointX: Float = 0.5f,
+    val dangerZoneM: Int = 5,
+    val warningZoneM: Int = 10,
+    val cautionZoneM: Int = 20,
     // SpeedCam
     val speedcamUrl1: String = "",
     val speedcamUrl2: String = "",
     val speedcamUrl3: String = "",
-    val speedcamLastUpdate: Long = 0L
+    val speedcamLastUpdate: Long = 0L,
+    val speedcamAutoUpdate: Boolean = true,
+    val speedcamTotalCameras: Int = 0
 )
 
 @HiltViewModel
@@ -58,7 +63,8 @@ class SettingsViewModel @Inject constructor(
     private val dataStore: DataStore<Preferences>,
     private val obdRepository: BluetoothOBDRepository,
     private val cameraRepository: CameraRepository,
-    private val adasAnalyzer: AdasAnalyzer
+    private val adasAnalyzer: AdasAnalyzer,
+    private val speedCamRepository: SpeedCamRepository
 ) : ViewModel() {
 
     companion object {
@@ -84,6 +90,7 @@ class SettingsViewModel @Inject constructor(
         val KEY_SPEEDCAM_URL2     = stringPreferencesKey("speedcam_url2")
         val KEY_SPEEDCAM_URL3     = stringPreferencesKey("speedcam_url3")
         val KEY_SPEEDCAM_LAST_UPD = stringPreferencesKey("speedcam_last_update")
+        val KEY_SPEEDCAM_AUTO_UPD = booleanPreferencesKey("speedcam_auto_update")
     }
 
     val settingsState = dataStore.data.map { p ->
@@ -103,11 +110,13 @@ class SettingsViewModel @Inject constructor(
             vanishingPointX       = p[KEY_VP_X]              ?: 0.5f,
             dangerZoneM           = p[KEY_DANGER_M]          ?: 5,
             warningZoneM          = p[KEY_WARNING_M]         ?: 10,
-            cautionZoneM          = p[KEY_CAUTION_M]         ?: 20,
+            cautionZoneM          = p[KEY_CAUTION_M]          ?: 20,
             speedcamUrl1          = p[KEY_SPEEDCAM_URL1]     ?: "",
             speedcamUrl2          = p[KEY_SPEEDCAM_URL2]     ?: "",
             speedcamUrl3          = p[KEY_SPEEDCAM_URL3]     ?: "",
-            speedcamLastUpdate    = p[KEY_SPEEDCAM_LAST_UPD]?.toLongOrNull() ?: 0L
+            speedcamLastUpdate    = p[KEY_SPEEDCAM_LAST_UPD]?.toLongOrNull() ?: 0L,
+            speedcamAutoUpdate    = p[KEY_SPEEDCAM_AUTO_UPD] ?: true,
+            speedcamTotalCameras  = 0
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsState())
 
@@ -116,6 +125,14 @@ class SettingsViewModel @Inject constructor(
 
     private val _speedcamUpdateResult = MutableStateFlow<String?>(null)
     val speedcamUpdateResult: StateFlow<String?> = _speedcamUpdateResult.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            speedCamRepository.lastUpdateResult.collect { result ->
+                if (result != null) _speedcamUpdateResult.value = result
+            }
+        }
+    }
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun getPairedDevices(): List<BluetoothDevice> = obdRepository.getPairedDevices().toList()
@@ -157,6 +174,17 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun setSpeedcamAutoUpdate(enabled: Boolean) {
+        viewModelScope.launch {
+            dataStore.edit { it[KEY_SPEEDCAM_AUTO_UPD] = enabled }
+            if (enabled) {
+                SpeedCamUpdateWorker.schedule(context)
+            } else {
+                SpeedCamUpdateWorker.cancel(context)
+            }
+        }
+    }
+
     fun updateSpeedcamDatabases() {
         viewModelScope.launch {
             _isUpdatingSpeedcam.value = true
@@ -168,22 +196,12 @@ class SettingsViewModel @Inject constructor(
                 _isUpdatingSpeedcam.value = false
                 return@launch
             }
-            var ok = 0; var err = 0
-            for (url in urls) {
-                try {
-                    val conn = java.net.URL(url).openConnection() as java.net.HttpURLConnection
-                    conn.connectTimeout = 10_000; conn.readTimeout = 15_000
-                    if (conn.responseCode == 200) { conn.inputStream.readBytes(); ok++ } else err++
-                    conn.disconnect()
-                } catch (_: Exception) { err++ }
-            }
-            dataStore.edit { it[KEY_SPEEDCAM_LAST_UPD] = System.currentTimeMillis().toString() }
-            _speedcamUpdateResult.value = when {
-                err == 0  -> "Обновлено: $ok источников"
-                ok == 0   -> "Ошибка обновления всех источников"
-                else      -> "Обновлено: $ok, ошибок: $err"
-            }
+            val stats = speedCamRepository.updateFromSources(urls)
+            dataStore.edit { it[KEY_SPEEDCAM_LAST_UPD] = stats.timestamp.toString() }
+            _speedcamUpdateResult.value = stats.summary
             _isUpdatingSpeedcam.value = false
+
+            SpeedCamNotificationHelper.notifyUpdateSuccess(context, stats.summary)
         }
     }
 

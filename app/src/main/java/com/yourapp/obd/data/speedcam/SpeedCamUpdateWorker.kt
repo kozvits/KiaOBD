@@ -4,8 +4,6 @@ import android.content.Context
 import android.util.Log
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
-import androidx.datastore.preferences.core.edit
-import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.hilt.work.HiltWorker
 import androidx.work.BackoffPolicy
 import androidx.work.Constraints
@@ -18,6 +16,7 @@ import androidx.work.WorkerParameters
 import com.yourapp.obd.data.prefs.AppPrefsKeys
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
+import kotlinx.coroutines.flow.first
 import java.util.concurrent.TimeUnit
 
 @HiltWorker
@@ -62,32 +61,18 @@ class SpeedCamUpdateWorker @AssistedInject constructor(
     }
 
     override suspend fun doWork(): Result {
-        val autoUpdateEnabled = dataStore.data.let { flow ->
-            var enabled = true
-            flow.collect { p ->
-                enabled = (p[AppPrefsKeys.SPEEDCAM_LAST_UPD]?.toLongOrNull() ?: 1L) == 1L
-                return@collect
-            }
-            enabled
-        }
+        val prefs = dataStore.data.first()
 
-        if (!autoUpdateEnabled) {
+        if (prefs[AppPrefsKeys.SPEEDCAM_AUTO_UPD] == false) {
             Log.i(TAG, "Автообновление отключено, пропускаем")
             return Result.success()
         }
 
-        val urls = dataStore.data.let { flow ->
-            val urls = mutableListOf<String>()
-            flow.collect { p ->
-                listOf(
-                    p[AppPrefsKeys.SPEEDCAM_URL1],
-                    p[AppPrefsKeys.SPEEDCAM_URL2],
-                    p[AppPrefsKeys.SPEEDCAM_URL3]
-                ).filterNotNull().filter { it.isNotBlank() }.let { urls.addAll(it) }
-                return@collect
-            }
-            urls
-        }
+        val urls = listOf(
+            prefs[AppPrefsKeys.SPEEDCAM_URL1].orEmpty(),
+            prefs[AppPrefsKeys.SPEEDCAM_URL2].orEmpty(),
+            prefs[AppPrefsKeys.SPEEDCAM_URL3].orEmpty()
+        ).filter { it.isNotBlank() }
 
         if (urls.isEmpty()) {
             Log.w(TAG, "Нет настроенных источников")
@@ -96,14 +81,11 @@ class SpeedCamUpdateWorker @AssistedInject constructor(
 
         return try {
             val stats = repository.updateFromSources(urls)
-
-            if (stats.isError) {
-                Result.retry()
-            } else {
-                Result.success()
-            }
+            SpeedCamNotificationHelper.notifyUpdateSuccess(applicationContext, stats.summary)
+            if (stats.isError) Result.retry() else Result.success()
         } catch (e: Exception) {
             Log.e(TAG, "Критическая ошибка обновления", e)
+            SpeedCamNotificationHelper.notifyUpdateError(applicationContext, e.message ?: "Неизвестная ошибка")
             if (runAttemptCount < 3) Result.retry() else Result.failure()
         }
     }

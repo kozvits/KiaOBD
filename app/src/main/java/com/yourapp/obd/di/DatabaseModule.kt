@@ -2,9 +2,12 @@ package com.yourapp.obd.di
 
 import android.content.Context
 import androidx.room.Room
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import com.yourapp.obd.data.db.AppDatabase
 import com.yourapp.obd.data.db.DtcDao
 import com.yourapp.obd.data.db.TripDao
+import com.yourapp.obd.data.speedcam.SpeedCamDao
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -16,6 +19,30 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object DatabaseModule {
 
+    private val MIGRATION_1_TO_2 = object : Migration(1, 2) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("""
+                CREATE TABLE IF NOT EXISTS `speed_cameras` (
+                    `id` TEXT NOT NULL,
+                    `latitude` REAL NOT NULL,
+                    `longitude` REAL NOT NULL,
+                    `type` TEXT NOT NULL DEFAULT 'UNKNOWN',
+                    `speedLimitKmh` INTEGER,
+                    `direction` TEXT,
+                    `road` TEXT,
+                    `isActive` INTEGER NOT NULL DEFAULT 1,
+                    `installedAt` INTEGER,
+                    `updatedAt` INTEGER NOT NULL,
+                    `hash` TEXT NOT NULL,
+                    PRIMARY KEY(`id`)
+                )
+            """)
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_speed_cameras_lat_lng` ON `speed_cameras` (`latitude`, `longitude`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_speed_cameras_type` ON `speed_cameras` (`type`)")
+            db.execSQL("CREATE INDEX IF NOT EXISTS `index_speed_cameras_updated` ON `speed_cameras` (`updatedAt`)")
+        }
+    }
+
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase {
@@ -24,9 +51,7 @@ object DatabaseModule {
             AppDatabase::class.java,
             "kia_obd.db"
         )
-        .addMigrations(
-            // Добавьте миграции здесь
-        )
+        .addMigrations(MIGRATION_1_TO_2)
         .build()
     }
 
@@ -35,4 +60,7 @@ object DatabaseModule {
 
     @Provides
     fun provideTripDao(db: AppDatabase): TripDao = db.tripDao()
+
+    @Provides
+    fun provideSpeedCamDao(db: AppDatabase): SpeedCamDao = db.speedCamDao()
 }

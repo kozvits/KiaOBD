@@ -5,7 +5,6 @@ import com.yourapp.obd.domain.model.SpeedCamType
 import org.json.JSONArray
 import org.json.JSONObject
 import java.security.MessageDigest
-import kotlin.math.roundToLong
 
 object SpeedCamParser {
 
@@ -24,9 +23,9 @@ object SpeedCamParser {
 
     fun parseJson(json: String): ParseResult {
         val root = JSONObject(json)
-        val version = root.optString("version", null)
+        val version = root.optString("version").ifBlank { null }
         val meta = root.optJSONObject("meta")
-        val checksum = meta?.optString("checksum", null)
+        val checksum = meta?.optString("checksum")?.ifBlank { null }
         val cameras = mutableListOf<SpeedCam>()
 
         val arr = root.optJSONArray("cameras") ?: root.optJSONArray("features") ?: JSONArray()
@@ -68,21 +67,21 @@ object SpeedCamParser {
 
         val speedLimit = props.optInt("speed_limit", -1)
             .takeIf { it > 0 }
-            ?: props.optInt("maxSpeed", null)
-            ?: props.optInt("limit", null)
+            ?: props.optInt("maxSpeed", -1).takeIf { it > 0 }
+            ?: props.optInt("limit", -1).takeIf { it > 0 }
 
         val active = props.optBoolean("active", true)
             .takeIf { it } ?: props.optBoolean("isActive", true)
             ?: props.optBoolean("is_active", true)
 
         val installedAt = parseTimestamp(
-            props.optString("installed_at", null)
-                ?: props.optString("installation_date", null)
+            props.optString("installed_at").ifBlank { null }
+                ?: props.optString("installation_date").ifBlank { null }
         )
 
         val updatedAt = parseTimestamp(
-            props.optString("updated_at", null)
-                ?: props.optString("update_date", null)
+            props.optString("updated_at").ifBlank { null }
+                ?: props.optString("update_date").ifBlank { null }
         ) ?: System.currentTimeMillis()
 
         val camHash = hash(id, lat.toString(), lng.toString(), typeStr, speedLimit?.toString())
@@ -93,9 +92,9 @@ object SpeedCamParser {
             longitude = lng,
             type = type,
             speedLimitKmh = speedLimit,
-            direction = props.optString("direction", null)?.takeIf { it.isNotBlank() },
-            road = props.optString("road", null)?.takeIf { it.isNotBlank() }
-                ?: props.optString("road_name", null),
+            direction = props.optString("direction").ifBlank { null },
+            road = props.optString("road").ifBlank { null }
+                ?: props.optString("road_name").ifBlank { null },
             isActive = active,
             installedAt = installedAt,
             updatedAt = updatedAt,

@@ -158,6 +158,12 @@ fun SettingsScreen(
                     Spacer(Modifier.height(8.dp))
                     UrlInputField("Источник 3", state.speedcamUrl3) { viewModel.setSpeedcamUrl(3, it) }
                     Spacer(Modifier.height(12.dp))
+                    SettingsSwitch(
+                        label = "Автообновление ежедневно в 03:00",
+                        checked = state.speedcamAutoUpdate,
+                        onCheckedChange = { viewModel.setSpeedcamAutoUpdate(it) }
+                    )
+                    Spacer(Modifier.height(8.dp))
                     if (state.speedcamLastUpdate > 0L) {
                         Text(
                             "Обновлено: ${SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date(state.speedcamLastUpdate))}",
