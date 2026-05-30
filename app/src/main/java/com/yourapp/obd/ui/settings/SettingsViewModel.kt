@@ -20,15 +20,13 @@ import com.yourapp.obd.data.speedcam.SpeedCamConstants
 import com.yourapp.obd.data.speedcam.SpeedCamNotificationHelper
 import com.yourapp.obd.data.speedcam.SpeedCamRepository
 import com.yourapp.obd.data.speedcam.SpeedCamSourceProvider
+import com.yourapp.obd.data.speedcam.SpeedCamUpdateLogEntity
 import com.yourapp.obd.data.speedcam.SpeedCamUpdateWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -56,7 +54,19 @@ data class SettingsState(
     val speedcamUrl3: String = "",
     val speedcamLastUpdate: Long = 0L,
     val speedcamAutoUpdate: Boolean = true,
-    val speedcamTotalCameras: Int = 0
+    val speedcamTotalCameras: Int = 0,
+    val speedcamRollbackAvailable: Boolean = false,
+    val speedcamUpdateHistory: List<SpeedCamUpdateHistoryItem> = emptyList()
+)
+
+data class SpeedCamUpdateHistoryItem(
+    val timestamp: Long,
+    val summary: String,
+    val newCount: Int,
+    val removedCount: Int,
+    val modifiedCount: Int,
+    val totalActive: Int,
+    val rollbackAvailable: Boolean
 )
 
 @HiltViewModel
@@ -95,32 +105,8 @@ class SettingsViewModel @Inject constructor(
         val KEY_SPEEDCAM_AUTO_UPD = booleanPreferencesKey("speedcam_auto_update")
     }
 
-    val settingsState = dataStore.data.map { p ->
-        SettingsState(
-            selectedDeviceAddress = p[KEY_DEVICE_ADDRESS]   ?: "",
-            bufferSizeGb          = p[KEY_BUFFER_SIZE_GB]   ?: 4,
-            videoResolution       = p[KEY_VIDEO_RESOLUTION]  ?: "FHD",
-            segmentDurationMin    = p[KEY_SEGMENT_DURATION]  ?: 5,
-            adasSensitivity       = p[KEY_ADAS_SENSITIVITY]  ?: "MEDIUM",
-            ldwEnabled            = p[KEY_LDW]               ?: true,
-            fcwEnabled            = p[KEY_FCW]               ?: true,
-            signEnabled           = p[KEY_SIGN]              ?: true,
-            dmsEnabled            = p[KEY_DMS]               ?: true,
-            pedestrianEnabled     = p[KEY_PEDESTRIAN]        ?: true,
-            horizonPosition       = p[KEY_HORIZON]           ?: 0.42f,
-            laneWidthPercent      = p[KEY_LANE_WIDTH]        ?: 0.28f,
-            vanishingPointX       = p[KEY_VP_X]              ?: 0.5f,
-            dangerZoneM           = p[KEY_DANGER_M]          ?: 5,
-            warningZoneM          = p[KEY_WARNING_M]         ?: 10,
-            cautionZoneM          = p[KEY_CAUTION_M]          ?: 20,
-            speedcamUrl1          = p[KEY_SPEEDCAM_URL1]     ?: "",
-            speedcamUrl2          = p[KEY_SPEEDCAM_URL2]     ?: "",
-            speedcamUrl3          = p[KEY_SPEEDCAM_URL3]     ?: "",
-            speedcamLastUpdate    = p[KEY_SPEEDCAM_LAST_UPD]?.toLongOrNull() ?: 0L,
-            speedcamAutoUpdate    = p[KEY_SPEEDCAM_AUTO_UPD] ?: true,
-            speedcamTotalCameras  = 0
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), SettingsState())
+    private val _settingsState = MutableStateFlow(SettingsState())
+    val settingsState: StateFlow<SettingsState> = _settingsState.asStateFlow()
 
     private val _isUpdatingSpeedcam = MutableStateFlow(false)
     val isUpdatingSpeedcam: StateFlow<Boolean> = _isUpdatingSpeedcam.asStateFlow()
@@ -128,13 +114,72 @@ class SettingsViewModel @Inject constructor(
     private val _speedcamUpdateResult = MutableStateFlow<String?>(null)
     val speedcamUpdateResult: StateFlow<String?> = _speedcamUpdateResult.asStateFlow()
 
+    private val _isRollingBack = MutableStateFlow(false)
+    val isRollingBack: StateFlow<Boolean> = _isRollingBack.asStateFlow()
+
     init {
         viewModelScope.launch {
             speedCamRepository.lastUpdateResult.collect { result ->
-                if (result != null) _speedcamUpdateResult.value = result
+                if (result != null) {
+                    _speedcamUpdateResult.value = result
+                    refreshSpeedcamDbState()
+                }
             }
         }
+        viewModelScope.launch {
+            dataStore.data.collect { prefs ->
+                _settingsState.value = _settingsState.value.copy(
+                    selectedDeviceAddress = prefs[KEY_DEVICE_ADDRESS] ?: "",
+                    bufferSizeGb = prefs[KEY_BUFFER_SIZE_GB] ?: 4,
+                    videoResolution = prefs[KEY_VIDEO_RESOLUTION] ?: "FHD",
+                    segmentDurationMin = prefs[KEY_SEGMENT_DURATION] ?: 5,
+                    adasSensitivity = prefs[KEY_ADAS_SENSITIVITY] ?: "MEDIUM",
+                    ldwEnabled = prefs[KEY_LDW] ?: true,
+                    fcwEnabled = prefs[KEY_FCW] ?: true,
+                    signEnabled = prefs[KEY_SIGN] ?: true,
+                    dmsEnabled = prefs[KEY_DMS] ?: true,
+                    pedestrianEnabled = prefs[KEY_PEDESTRIAN] ?: true,
+                    horizonPosition = prefs[KEY_HORIZON] ?: 0.42f,
+                    laneWidthPercent = prefs[KEY_LANE_WIDTH] ?: 0.28f,
+                    vanishingPointX = prefs[KEY_VP_X] ?: 0.5f,
+                    dangerZoneM = prefs[KEY_DANGER_M] ?: 5,
+                    warningZoneM = prefs[KEY_WARNING_M] ?: 10,
+                    cautionZoneM = prefs[KEY_CAUTION_M] ?: 20,
+                    speedcamUrl1 = prefs[KEY_SPEEDCAM_URL1] ?: "",
+                    speedcamUrl2 = prefs[KEY_SPEEDCAM_URL2] ?: "",
+                    speedcamUrl3 = prefs[KEY_SPEEDCAM_URL3] ?: "",
+                    speedcamLastUpdate = prefs[KEY_SPEEDCAM_LAST_UPD]?.toLongOrNull() ?: 0L,
+                    speedcamAutoUpdate = prefs[KEY_SPEEDCAM_AUTO_UPD] ?: true
+                )
+            }
+        }
+        viewModelScope.launch {
+            refreshSpeedcamDbState()
+        }
     }
+
+    private suspend fun refreshSpeedcamDbState() {
+        try {
+            val history = speedCamRepository.getUpdateHistory()
+            val snapshotInfo = speedCamRepository.rollbackManager.getSnapshotInfo()
+            val totalActive = speedCamRepository.getTotalActive()
+            _settingsState.value = _settingsState.value.copy(
+                speedcamTotalCameras = totalActive,
+                speedcamRollbackAvailable = snapshotInfo.available,
+                speedcamUpdateHistory = history.map { it.toHistoryItem() }
+            )
+        } catch (_: Exception) { }
+    }
+
+    private fun SpeedCamUpdateLogEntity.toHistoryItem() = SpeedCamUpdateHistoryItem(
+        timestamp = timestamp,
+        summary = summary,
+        newCount = newCameras,
+        removedCount = removedCameras,
+        modifiedCount = modifiedCameras,
+        totalActive = totalActive,
+        rollbackAvailable = rollbackAvailable
+    )
 
     @RequiresPermission(Manifest.permission.BLUETOOTH_CONNECT)
     fun getPairedDevices(): List<BluetoothDevice> = obdRepository.getPairedDevices().toList()
@@ -177,7 +222,7 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun applySpeedcamPreset(index: Int) {
-        val preset = com.yourapp.obd.data.speedcam.SpeedCamConstants.PRESETS.getOrNull(index) ?: return
+        val preset = SpeedCamConstants.PRESETS.getOrNull(index) ?: return
         viewModelScope.launch {
             dataStore.edit {
                 it[KEY_SPEEDCAM_URL1] = preset.url1
@@ -188,11 +233,11 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun applyCountryPreset() {
-        val countryName = com.yourapp.obd.data.speedcam.SpeedCamSourceProvider.extractCountryName()
+        val countryName = SpeedCamSourceProvider.extractCountryName()
         val overpassUrl = if (countryName != null) {
-            com.yourapp.obd.data.speedcam.SpeedCamSourceProvider.buildOverpassUrl(countryName)
+            SpeedCamSourceProvider.buildOverpassUrl(countryName)
         } else {
-            com.yourapp.obd.data.speedcam.SpeedCamSourceProvider.buildOverpassUrl()
+            SpeedCamSourceProvider.buildOverpassUrl()
         }
         viewModelScope.launch {
             dataStore.edit {
@@ -230,7 +275,25 @@ class SettingsViewModel @Inject constructor(
             _speedcamUpdateResult.value = stats.summary
             _isUpdatingSpeedcam.value = false
 
-            SpeedCamNotificationHelper.notifyUpdateSuccess(context, stats.summary)
+            refreshSpeedcamDbState()
+
+            if (!stats.isError) {
+                SpeedCamNotificationHelper.notifyUpdateSuccess(context, stats.summary)
+            }
+        }
+    }
+
+    fun rollbackSpeedcamUpdate() {
+        viewModelScope.launch {
+            _isRollingBack.value = true
+            val stats = speedCamRepository.rollbackLastUpdate()
+            refreshSpeedcamDbState()
+            _speedcamUpdateResult.value = if (!stats.isError) {
+                "Откат выполнен успешно. Всего камер: ${stats.totalActive}"
+            } else {
+                "Откат недоступен — нет снапшота"
+            }
+            _isRollingBack.value = false
         }
     }
 

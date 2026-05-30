@@ -81,6 +81,7 @@ fun SettingsScreen(
 ) {
     val state          by viewModel.settingsState.collectAsStateWithLifecycle()
     val isUpdating     by viewModel.isUpdatingSpeedcam.collectAsStateWithLifecycle()
+    val isRollingBack  by viewModel.isRollingBack.collectAsStateWithLifecycle()
     val updateResult   by viewModel.speedcamUpdateResult.collectAsStateWithLifecycle()
     val snackbar       = remember { SnackbarHostState() }
     val listState      = rememberLazyListState()
@@ -153,6 +154,13 @@ fun SettingsScreen(
 
             item(key = "speedcam") {
                 SectionCard("Базы камер SpeedCam") {
+                    // Статистика
+                    if (state.speedcamTotalCameras > 0) {
+                        Text("Всего камер в базе: ${state.speedcamTotalCameras}",
+                            color = AccentCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 8.dp))
+                    }
+
                     Text("Источники URL для обновления баз камер контроля скорости",
                         color = Color.Gray, fontSize = 12.sp,
                         modifier = Modifier.padding(bottom = 8.dp))
@@ -183,9 +191,11 @@ fun SettingsScreen(
                             modifier = Modifier.padding(bottom = 8.dp)
                         )
                     }
+
+                    // Кнопка обновления
                     Button(
                         onClick = { viewModel.updateSpeedcamDatabases() },
-                        enabled = !isUpdating,
+                        enabled = !isUpdating && !isRollingBack,
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(
                             containerColor = AccentCyan, disabledContainerColor = Color.DarkGray),
@@ -199,6 +209,43 @@ fun SettingsScreen(
                             Icon(Icons.Default.Refresh, null, tint = Color.White, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text("Обновить базы", color = Color.White)
+                        }
+                    }
+
+                    // Кнопка отката
+                    if (state.speedcamRollbackAvailable) {
+                        Spacer(Modifier.height(8.dp))
+                        Button(
+                            onClick = { viewModel.rollbackSpeedcamUpdate() },
+                            enabled = !isRollingBack && !isUpdating,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = Color(0xFF8B0000),
+                                disabledContainerColor = Color.DarkGray),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            if (isRollingBack) {
+                                CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Откат...", color = Color.White)
+                            } else {
+                                Text("↩ Откатить последнее обновление", color = Color.White)
+                            }
+                        }
+                    }
+
+                    // История обновлений
+                    if (state.speedcamUpdateHistory.isNotEmpty()) {
+                        Spacer(Modifier.height(12.dp))
+                        Text("История обновлений", color = AccentCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                        Spacer(Modifier.height(4.dp))
+                        state.speedcamUpdateHistory.take(5).forEach { item ->
+                            val dateStr = SimpleDateFormat("dd.MM HH:mm", Locale.getDefault()).format(Date(item.timestamp))
+                            Text(
+                                "$dateStr — ${item.summary}",
+                                color = Color.Gray, fontSize = 10.sp,
+                                modifier = Modifier.padding(vertical = 1.dp)
+                            )
                         }
                     }
                 }

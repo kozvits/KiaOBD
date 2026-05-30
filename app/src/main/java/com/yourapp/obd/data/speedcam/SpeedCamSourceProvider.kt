@@ -56,6 +56,7 @@ object SpeedCamSourceProvider {
     fun extractCountryName(locale: Locale = Locale.getDefault()): String? {
         val code = locale.country.uppercase()
         return when (code) {
+            "BY" -> "Belarus"
             "FR" -> "France"
             "DE" -> "Deutschland"
             "IT" -> "Italia"
@@ -79,6 +80,8 @@ object SpeedCamSourceProvider {
             "DK" -> "Danmark"
             "FI" -> "Suomi"
             "PT" -> "Portugal"
+            "UA" -> "Ukraine"
+            "KZ" -> "Kazakhstan"
             else -> null
         }
     }

@@ -33,6 +33,7 @@ data class SpeedCamUpdateStats(
     val timestamp: Long = System.currentTimeMillis()
 ) {
     val isError: Boolean get() = sourcesProcessed == 0
+    val totalChanges: Int get() = newCameras + removedCameras + modifiedCameras
     val summary: String
         get() = buildString {
             if (isError) {

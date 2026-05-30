@@ -69,7 +69,7 @@ object SpeedCamNotificationHelper {
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle("Ошибка обновления базы камер")
             .setContentText(errorMessage)
-            .setStyle(NotificationCompat.BigTextStyle().bigText("$errorMessage\nНажмите, чтобы открыть настройки и повторить вручную."))
+            .setStyle(NotificationCompat.BigTextStyle().bigText("$errorMessage\n\nНажмите, чтобы открыть настройки.\nТам можно повторить обновление вручную или откатить изменения."))
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
@@ -77,6 +77,54 @@ object SpeedCamNotificationHelper {
 
         try {
             NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_UPDATE_ERROR, notification)
+        } catch (_: SecurityException) { }
+    }
+
+    fun notifyRollbackAvailable(context: Context, snapshotCount: Int) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("open_settings", "speedcam")
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context, 2, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("Доступен откат базы камер")
+            .setContentText("Снапшот на $snapshotCount камер доступен для восстановления")
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .build()
+
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_UPDATE_SUCCESS + 10, notification)
+        } catch (_: SecurityException) { }
+    }
+
+    fun notifyAutoUpdateDisabled(context: Context) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+            putExtra("open_settings", "speedcam")
+        }
+        val pendingIntent = PendingIntent.getActivity(
+            context, 3, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle("Автообновление камер отключено")
+            .setContentText("Включите в Настройках → Базы камер SpeedCam для ежедневного обновления в 03:00")
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build()
+
+        try {
+            NotificationManagerCompat.from(context).notify(NOTIFICATION_ID_UPDATE_SUCCESS + 20, notification)
         } catch (_: SecurityException) { }
     }
 }

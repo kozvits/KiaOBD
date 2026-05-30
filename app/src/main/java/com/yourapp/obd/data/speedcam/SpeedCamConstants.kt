@@ -19,14 +19,29 @@ object SpeedCamConstants {
             url1 = ""
         ),
         SourcePreset(
-            name = "Франция (data.gouv.fr)",
-            description = "Официальные данные ~3400 камер. CSV, обновляется ежемесячно. Без API-ключа.",
-            url1 = "https://www.data.gouv.fr/fr/datasets/r/87e2e9a4-c499-43e8-8580-7967a81c8e21",
-            url2 = "https://www.data.gouv.fr/fr/datasets/r/9820dd82-ec3f-424e-bd49-d0ffa49619c2"
+            name = "Беларусь (OSM Overpass)",
+            description = "Камеры из OpenStreetMap для РБ (городские и трассовые). Обновляется сообществом. Бесплатно.",
+            url1 = "https://overpass-api.de/api/interpreter?data=%5Bout%3Ajson%5D%5Btimeout%3A45%5D%3Barea%5B%22name%22%3D%22Belarus%22%5D%5Bboundary%3Dadministrative%5D-%3E.a%3B%28node%28area.a%29%5B%22highway%22%3D%22speed_camera%22%5D%3Bnode%28area.a%29%5B%22enforcement%22%3D%22speed_camera%22%5D%3Bnode%28area.a%29%5B%22highway%22%3D%22speed_display%22%5D%3B%29%3Bout%20body%3B",
+            url2 = "https://overpass-api.de/api/interpreter?data=%5Bout%3Ajson%5D%5Btimeout%3A45%5D%3Barea%5B%22name%22%3D%22Belarus%22%5D%5Bboundary%3Dadministrative%5D-%3E.a%3B%28way%28area.a%29%5B%22highway%22%3D%22speed_camera%22%5D%3Brelation%28area.a%29%5B%22highway%22%3D%22speed_camera%22%5D%3B%29%3Bout%20center%3B",
+            url3 = ""
         ),
         SourcePreset(
-            name = "Европа (Lufop)",
-            description = "Крупнейшая база: FR, IT, ES, DE, CH, BE и др. Требуется бесплатный ключ с lufop.net.",
+            name = "Беларусь (Mapillary)",
+            description = "Камеры из Mapillary для РБ. Бесплатно, данные сообщества.",
+            url1 = "https://a.mapillary.com/v3/images?closeto=53.9,27.57&radius=50000&limit=500&client_id=REPLACE_WITH_YOUR_CLIENT_ID",
+            url2 = "",
+            url3 = "",
+            requiresApiKey = true,
+            apiKeyHint = "Зарегистрируйтесь на mapillary.com и получите client_id"
+        ),
+        SourcePreset(
+            name = "Мир (SpeedCams.world)",
+            description = "68 000+ камер в 44 странах, включая РБ. CSV из OSM, обновляется регулярно.",
+            url1 = "https://speedcams.world/download/all.csv"
+        ),
+        SourcePreset(
+            name = "Европа+СНГ (Lufop)",
+            description = "Крупнейшая база: FR, IT, ES, DE, CH, BE, PL, RU и др. Требуется бесплатный ключ с lufop.net.",
             url1 = "https://api.lufop.net/api?key=ВАШ_API_КЛЮЧ&format=json&nbr=10000&pays=fr",
             url2 = "https://api.lufop.net/api?key=ВАШ_API_КЛЮЧ&format=json&nbr=10000&pays=it",
             url3 = "https://api.lufop.net/api?key=ВАШ_API_КЛЮЧ&format=json&nbr=10000&pays=es",
@@ -34,16 +49,17 @@ object SpeedCamConstants {
             apiKeyHint = "https://lufop.net/en/lufop-api-access-the-most-complete-free-speed-camera-database/"
         ),
         SourcePreset(
+            name = "Франция (data.gouv.fr)",
+            description = "Официальные данные ~3400 камер. CSV, обновляется ежемесячно. Без API-ключа.",
+            url1 = "https://www.data.gouv.fr/fr/datasets/r/87e2e9a4-c499-43e8-8580-7967a81c8e21",
+            url2 = "https://www.data.gouv.fr/fr/datasets/r/9820dd82-ec3f-424e-bd49-d0ffa49619c2"
+        ),
+        SourcePreset(
             name = "США (SpeedCameraAPI)",
             description = "Тестовое API с камерами в крупных городах США. Бесплатно, без ключа.",
             url1 = "https://speedcameraapi.onrender.com/cameras/zipcode/10001",
             url2 = "https://speedcameraapi.onrender.com/cameras/zipcode/90028",
             url3 = "https://speedcameraapi.onrender.com/cameras/zipcode/60601"
-        ),
-        SourcePreset(
-            name = "Мир (SpeedCams.world)",
-            description = "68 000+ камер в 44 странах из OSM. CSV, обновляется регулярно.",
-            url1 = "https://speedcams.world/download/all.csv"
         ),
         SourcePreset(
             name = "Австралия (SpeedCam.com.au)",
