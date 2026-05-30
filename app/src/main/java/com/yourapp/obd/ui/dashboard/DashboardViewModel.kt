@@ -79,8 +79,6 @@ class DashboardViewModel @Inject constructor(
         )
     }.stateIn(viewModelScope, SharingStarted.Eagerly, AdasCalibration())
 
-    private var cameraIsBound = false
-
     init {
         collectOBD()
         collectAlerts()
@@ -90,8 +88,6 @@ class DashboardViewModel @Inject constructor(
     }
 
     fun bindCamera(owner: LifecycleOwner, previewView: PreviewView) {
-        if (cameraIsBound) return
-        cameraIsBound = true
         cameraRepository.bindCamera(owner, previewView)
         cameraRepository.startRecording()
     }
@@ -156,7 +152,7 @@ class DashboardViewModel @Inject constructor(
     }
 
     override fun onCleared() {
+        cameraRepository.stopRecording()
         super.onCleared()
-        cameraIsBound = false
     }
 }

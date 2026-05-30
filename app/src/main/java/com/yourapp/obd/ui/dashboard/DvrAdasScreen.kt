@@ -2,6 +2,7 @@ package com.yourapp.obd.ui.dashboard
 
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -102,12 +103,16 @@ fun DvrAdasScreen(
             )
         }
 
-        // ── 4. REC индикатор ─────────────────────────────────────────────────
+        // ── 4. REC индикатор (тап — старт/стоп записи) ──────────────────────
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(12.dp)
+                .clickable {
+                    if (isRecording) viewModel.stopRecording()
+                    else viewModel.startRecording()
+                }
                 .background(Color.Black.copy(alpha = 0.55f), RoundedCornerShape(8.dp))
                 .padding(horizontal = 10.dp, vertical = 6.dp)
         ) {

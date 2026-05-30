@@ -60,7 +60,8 @@ fun MenuScreen(
     onNavigateToSettings: (section: String?) -> Unit,
     onNavigateToDvr: () -> Unit,
     onNavigateToDashboard: () -> Unit,
-    onNavigateToSpeedcam: () -> Unit = {}
+    onNavigateToSpeedcam: () -> Unit = {},
+    onNavigateToVideoSettings: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -94,6 +95,12 @@ fun MenuScreen(
                 label = "Архив записей",
                 desc = "Просмотр и удаление видео",
                 onClick = onNavigateToPlayer
+            )
+            MenuItem(
+                icon = Icons.Default.Settings,
+                label = "Настройки видео",
+                desc = "Разрешение, длительность, размер буфера",
+                onClick = onNavigateToVideoSettings
             )
         }
 

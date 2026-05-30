@@ -121,6 +121,12 @@ fun KiaOBDNavHost() {
                                 popUpTo(Routes.MENU)
                                 launchSingleTop = true
                             }
+                        },
+                        onNavigateToVideoSettings = {
+                            navController.navigate("${Routes.SETTINGS}?section=video") {
+                                popUpTo(Routes.MENU)
+                                launchSingleTop = true
+                            }
                         }
                     )
                 }

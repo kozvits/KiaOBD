@@ -75,6 +75,7 @@ fun SettingsScreen(
     val listState      = rememberLazyListState()
 
     val sectionIndex = when (scrollToSection) {
+        "video"            -> 1
         "adas_calibration" -> 3
         "adas_sensitivity" -> 4
         "adas_modules"     -> 5
