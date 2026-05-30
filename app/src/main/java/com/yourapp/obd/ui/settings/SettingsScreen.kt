@@ -12,32 +12,20 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardActions
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
@@ -59,13 +47,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yourapp.obd.ui.theme.AccentCyan
-import com.yourapp.obd.ui.theme.AlertRed
 import com.yourapp.obd.ui.theme.DarkBackground
 import com.yourapp.obd.ui.theme.DarkSurface
 import java.text.SimpleDateFormat
@@ -154,100 +140,27 @@ fun SettingsScreen(
 
             item(key = "speedcam") {
                 SectionCard("Базы камер SpeedCam") {
-                    // Статистика
+                    Text("Настройки камер SpeedCam перенесены в отдельное меню:",
+                        color = Color.Gray, fontSize = 12.sp)
+                    Spacer(Modifier.height(4.dp))
+                    Text("Меню → Сигнатурный радар → База камер SpeedCam",
+                        color = AccentCyan, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    Spacer(Modifier.height(8.dp))
                     if (state.speedcamTotalCameras > 0) {
-                        Text("Всего камер в базе: ${state.speedcamTotalCameras}",
-                            color = AccentCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(bottom = 8.dp))
+                        Text("В базе: ${state.speedcamTotalCameras} камер",
+                            color = Color.White, fontSize = 12.sp)
                     }
-
-                    Text("Источники URL для обновления баз камер контроля скорости",
-                        color = Color.Gray, fontSize = 12.sp,
-                        modifier = Modifier.padding(bottom = 8.dp))
-
-                    PresetSelector(
-                        presets = com.yourapp.obd.data.speedcam.SpeedCamConstants.PRESETS,
-                        onSelectPreset = { index -> viewModel.applySpeedcamPreset(index) },
-                        onAutoDetect = { viewModel.applyCountryPreset() }
-                    )
-
+                    if (state.speedcamLastUpdate > 0L) {
+                        Text(
+                            "Последнее обновление: ${SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date(state.speedcamLastUpdate))}",
+                            color = Color.Gray, fontSize = 11.sp)
+                    }
                     Spacer(Modifier.height(8.dp))
-                    UrlInputField("Источник 1", state.speedcamUrl1) { viewModel.setSpeedcamUrl(1, it) }
-                    Spacer(Modifier.height(8.dp))
-                    UrlInputField("Источник 2", state.speedcamUrl2) { viewModel.setSpeedcamUrl(2, it) }
-                    Spacer(Modifier.height(8.dp))
-                    UrlInputField("Источник 3", state.speedcamUrl3) { viewModel.setSpeedcamUrl(3, it) }
-                    Spacer(Modifier.height(12.dp))
                     SettingsSwitch(
                         label = "Автообновление ежедневно в 03:00",
                         checked = state.speedcamAutoUpdate,
                         onCheckedChange = { viewModel.setSpeedcamAutoUpdate(it) }
                     )
-                    Spacer(Modifier.height(8.dp))
-                    if (state.speedcamLastUpdate > 0L) {
-                        Text(
-                            "Обновлено: ${SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date(state.speedcamLastUpdate))}",
-                            color = Color.Gray, fontSize = 11.sp,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                    }
-
-                    // Кнопка обновления
-                    Button(
-                        onClick = { viewModel.updateSpeedcamDatabases() },
-                        enabled = !isUpdating && !isRollingBack,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = AccentCyan, disabledContainerColor = Color.DarkGray),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        if (isUpdating) {
-                            CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Обновление...", color = Color.White)
-                        } else {
-                            Icon(Icons.Default.Refresh, null, tint = Color.White, modifier = Modifier.size(18.dp))
-                            Spacer(Modifier.width(8.dp))
-                            Text("Обновить базы", color = Color.White)
-                        }
-                    }
-
-                    // Кнопка отката
-                    if (state.speedcamRollbackAvailable) {
-                        Spacer(Modifier.height(8.dp))
-                        Button(
-                            onClick = { viewModel.rollbackSpeedcamUpdate() },
-                            enabled = !isRollingBack && !isUpdating,
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = Color(0xFF8B0000),
-                                disabledContainerColor = Color.DarkGray),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            if (isRollingBack) {
-                                CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
-                                Spacer(Modifier.width(8.dp))
-                                Text("Откат...", color = Color.White)
-                            } else {
-                                Text("↩ Откатить последнее обновление", color = Color.White)
-                            }
-                        }
-                    }
-
-                    // История обновлений
-                    if (state.speedcamUpdateHistory.isNotEmpty()) {
-                        Spacer(Modifier.height(12.dp))
-                        Text("История обновлений", color = AccentCyan, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                        Spacer(Modifier.height(4.dp))
-                        state.speedcamUpdateHistory.take(5).forEach { item ->
-                            val dateStr = SimpleDateFormat("dd.MM HH:mm", Locale.getDefault()).format(Date(item.timestamp))
-                            Text(
-                                "$dateStr — ${item.summary}",
-                                color = Color.Gray, fontSize = 10.sp,
-                                modifier = Modifier.padding(vertical = 1.dp)
-                            )
-                        }
-                    }
                 }
             }
 
@@ -432,25 +345,6 @@ private fun DropdownSetting(
 }
 
 @Composable
-private fun UrlInputField(label: String, value: String, onValueChange: (String) -> Unit) {
-    var text by remember(value) { mutableStateOf(value) }
-    OutlinedTextField(
-        value = text, onValueChange = { text = it },
-        label = { Text(label, fontSize = 12.sp) },
-        placeholder = { Text("https://...", color = Color.DarkGray, fontSize = 12.sp) },
-        modifier = Modifier.fillMaxWidth(), singleLine = true,
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = AccentCyan, unfocusedBorderColor = Color.DarkGray,
-            focusedLabelColor = AccentCyan, unfocusedLabelColor = Color.Gray,
-            focusedTextColor = Color.White, unfocusedTextColor = Color.White, cursorColor = AccentCyan
-        ),
-        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-        keyboardActions = KeyboardActions(onDone = { onValueChange(text) }),
-        textStyle = androidx.compose.ui.text.TextStyle(fontSize = 12.sp)
-    )
-}
-
-@Composable
 private fun BluetoothDeviceSelector(selectedAddress: String, viewModel: SettingsViewModel) {
     var expanded by remember { mutableStateOf(false) }
     var devices by remember { mutableStateOf<List<BluetoothDevice>>(emptyList()) }
@@ -491,73 +385,6 @@ private fun BluetoothDeviceSelector(selectedAddress: String, viewModel: Settings
                     },
                     onClick = { viewModel.selectDevice(dev.address); expanded = false }
                 )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PresetSelector(
-    presets: List<com.yourapp.obd.data.speedcam.SpeedCamConstants.SourcePreset>,
-    onSelectPreset: (Int) -> Unit,
-    onAutoDetect: () -> Unit
-) {
-    var expanded by remember { mutableStateOf(false) }
-    val selectedLabel = "Выберите предустановку..."
-
-    Column {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(modifier = Modifier.weight(1f)) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { expanded = true }
-                        .background(DarkSurface, RoundedCornerShape(8.dp))
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = selectedLabel,
-                        color = Color.Gray,
-                        fontSize = 12.sp,
-                        modifier = Modifier.weight(1f)
-                    )
-                    Icon(Icons.Default.ExpandMore, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
-                }
-                DropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false },
-                    modifier = Modifier.background(DarkSurface).widthIn(max = 320.dp)
-                ) {
-                    presets.forEachIndexed { index, preset ->
-                        DropdownMenuItem(
-                            text = {
-                                Column {
-                                    Text(preset.name, color = Color.White, fontSize = 13.sp)
-                                    Text(preset.description, color = Color.Gray, fontSize = 10.sp)
-                                }
-                            },
-                            onClick = {
-                                expanded = false
-                                onSelectPreset(index)
-                            }
-                        )
-                    }
-                }
-            }
-            Button(
-                onClick = onAutoDetect,
-                colors = ButtonDefaults.buttonColors(containerColor = DarkSurface),
-                shape = RoundedCornerShape(8.dp),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-            ) {
-                Icon(Icons.Default.Sensors, null, tint = AccentCyan, modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(4.dp))
-                Text("Авто", color = AccentCyan, fontSize = 11.sp)
             }
         }
     }

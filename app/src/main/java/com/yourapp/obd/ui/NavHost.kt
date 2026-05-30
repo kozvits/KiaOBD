@@ -28,6 +28,7 @@ import com.yourapp.obd.ui.dtc.DtcScreen
 import com.yourapp.obd.ui.menu.MenuScreen
 import com.yourapp.obd.ui.player.PlayerScreen
 import com.yourapp.obd.ui.settings.SettingsScreen
+import com.yourapp.obd.ui.speedcam.SpeedCamScreen
 
 object Routes {
     const val DVR_ADAS = "dvr_adas"
@@ -36,6 +37,7 @@ object Routes {
     const val SETTINGS = "settings"
     const val DTC = "dtc"
     const val PLAYER = "player"
+    const val SPEEDCAM = "speedcam"
 }
 
 private data class BottomNavItem(
@@ -113,6 +115,12 @@ fun KiaOBDNavHost() {
                                 launchSingleTop = true
                                 restoreState = true
                             }
+                        },
+                        onNavigateToSpeedcam = {
+                            navController.navigate(Routes.SPEEDCAM) {
+                                popUpTo(Routes.MENU)
+                                launchSingleTop = true
+                            }
                         }
                     )
                 }
@@ -136,6 +144,9 @@ fun KiaOBDNavHost() {
                 }
                 composable(Routes.PLAYER) {
                     PlayerScreen(onBack = { navController.popBackStack() })
+                }
+                composable(Routes.SPEEDCAM) {
+                    SpeedCamScreen(onBack = { navController.popBackStack() })
                 }
             }
         }

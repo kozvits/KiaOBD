@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.ListAlt
+import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Settings
@@ -58,7 +59,8 @@ fun MenuScreen(
     onNavigateToPlayer: () -> Unit,
     onNavigateToSettings: (section: String?) -> Unit,
     onNavigateToDvr: () -> Unit,
-    onNavigateToDashboard: () -> Unit
+    onNavigateToDashboard: () -> Unit,
+    onNavigateToSpeedcam: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -140,6 +142,25 @@ fun MenuScreen(
         }
 
         ExpandableSection(
+            icon = Icons.Default.Radar,
+            title = "Сигнатурный радар",
+            accentColor = Color(0xFF00BCD4)
+        ) {
+            MenuItem(
+                icon = Icons.Default.Radar,
+                label = "База камер SpeedCam",
+                desc = "Источники, обновление, история, откат",
+                onClick = onNavigateToSpeedcam
+            )
+            MenuItem(
+                icon = Icons.Default.Sensors,
+                label = "Автоопределение камер",
+                desc = "Настройки сигнатурного радара (скоро выйдет)",
+                onClick = onNavigateToSpeedcam
+            )
+        }
+
+        ExpandableSection(
             icon = Icons.Default.Settings,
             title = "Система",
             accentColor = Color(0xFFFFC107)
@@ -147,7 +168,7 @@ fun MenuScreen(
             MenuItem(
                 icon = Icons.Default.Settings,
                 label = "Все настройки",
-                desc = "OBD-II, видео, SpeedCam, ADAS",
+                desc = "OBD-II, видео, ADAS",
                 onClick = { onNavigateToSettings(null) }
             )
         }
