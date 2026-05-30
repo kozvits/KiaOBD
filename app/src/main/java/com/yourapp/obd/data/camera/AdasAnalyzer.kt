@@ -23,9 +23,9 @@ import kotlin.math.abs
 class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
 
     companion object {
-        private const val LDW_MIN_SPEED = 30
-        private const val LDW_DEVIATION_THRESHOLD = 0.15f
-        private const val FCW_MIN_SPEED = 10
+        private const val DEFAULT_LDW_MIN_SPEED = 30
+        private const val DEFAULT_LDW_DEVIATION = 0.15f
+        private const val DEFAULT_FCW_MIN_SPEED = 10
         private const val VEHICLE_MIN_AREA = 500
         private const val DISTANCE_K = 150f
         private const val FCW_COOLDOWN_MS = 400L
@@ -43,13 +43,49 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
     var dmsEnabled = false
     var pedestrianEnabled = false
 
+    // Чувствительность (LOW/MEDIUM/HIGH)
+    var sensitivity: String = "MEDIUM"
+        set(value) {
+            field = value
+            applySensitivity()
+        }
+
     @Volatile
     var lastVehicleDistanceM: Float? = null
     private var lastFcwAlertTime = 0L
     private var opencvReady = false
+    private var ldwMinSpeed = DEFAULT_LDW_MIN_SPEED
+    private var ldwDeviationThreshold = DEFAULT_LDW_DEVIATION
+    private var fcwMinSpeed = DEFAULT_FCW_MIN_SPEED
 
     init {
-        try { opencvReady = OpenCVLoader.initLocal() } catch (_: Exception) {}
+        try {
+            opencvReady = OpenCVLoader.initLocal()
+            if (!opencvReady) opencvReady = OpenCVLoader.initDebug()
+        } catch (_: Exception) {
+            opencvReady = false
+        }
+        applySensitivity()
+    }
+
+    private fun applySensitivity() {
+        when (sensitivity) {
+            "LOW" -> {
+                ldwMinSpeed = 50
+                ldwDeviationThreshold = 0.25f
+                fcwMinSpeed = 30
+            }
+            "HIGH" -> {
+                ldwMinSpeed = 15
+                ldwDeviationThreshold = 0.10f
+                fcwMinSpeed = 5
+            }
+            else -> { // MEDIUM
+                ldwMinSpeed = DEFAULT_LDW_MIN_SPEED
+                ldwDeviationThreshold = DEFAULT_LDW_DEVIATION
+                fcwMinSpeed = DEFAULT_FCW_MIN_SPEED
+            }
+        }
     }
 
     override fun analyze(image: ImageProxy) {
@@ -63,8 +99,8 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
 
         scope.launch {
             try {
-                if (ldwEnabled && currentSpeedKmh >= LDW_MIN_SPEED) analyzeLdw(mat.clone())
-                if (fcwEnabled && currentSpeedKmh >= FCW_MIN_SPEED) analyzeFcw(mat.clone())
+                if (ldwEnabled && currentSpeedKmh >= ldwMinSpeed) analyzeLdw(mat.clone())
+                if (fcwEnabled && currentSpeedKmh >= fcwMinSpeed) analyzeFcw(mat.clone())
             } finally { mat.release() }
         }
     }
@@ -101,7 +137,7 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
             val laneC = lx + laneW / 2.0
             val dev = abs(cx - laneC) / laneW
 
-            if (dev > LDW_DEVIATION_THRESHOLD && laneW > 0) {
+            if (dev > ldwDeviationThreshold && laneW > 0) {
                 val dir = if (cx < laneC) "LEFT" else "RIGHT"
                 scope.launch { _alerts.emit(AdasAlert.LaneDeparture(dir, dev.toFloat())) }
             }

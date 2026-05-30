@@ -128,7 +128,7 @@ class SettingsViewModel @Inject constructor(
         }
         viewModelScope.launch {
             dataStore.data.collect { prefs ->
-                _settingsState.value = _settingsState.value.copy(
+                val s = _settingsState.value.copy(
                     selectedDeviceAddress = prefs[KEY_DEVICE_ADDRESS] ?: "",
                     bufferSizeGb = prefs[KEY_BUFFER_SIZE_GB] ?: 4,
                     videoResolution = prefs[KEY_VIDEO_RESOLUTION] ?: "FHD",
@@ -151,6 +151,14 @@ class SettingsViewModel @Inject constructor(
                     speedcamLastUpdate = prefs[KEY_SPEEDCAM_LAST_UPD]?.toLongOrNull() ?: 0L,
                     speedcamAutoUpdate = prefs[KEY_SPEEDCAM_AUTO_UPD] ?: true
                 )
+                _settingsState.value = s
+                // Применяем настройки ADAS к синглтон-анализатору
+                adasAnalyzer.ldwEnabled = s.ldwEnabled
+                adasAnalyzer.fcwEnabled = s.fcwEnabled
+                adasAnalyzer.signDetectionEnabled = s.signEnabled
+                adasAnalyzer.dmsEnabled = s.dmsEnabled
+                adasAnalyzer.pedestrianEnabled = s.pedestrianEnabled
+                adasAnalyzer.sensitivity = s.adasSensitivity
             }
         }
         viewModelScope.launch {
@@ -193,7 +201,7 @@ class SettingsViewModel @Inject constructor(
     }
     fun setVideoResolution(r: String)   { viewModelScope.launch { dataStore.edit { it[KEY_VIDEO_RESOLUTION] = r } } }
     fun setSegmentDurationMin(m: Int)   { viewModelScope.launch { dataStore.edit { it[KEY_SEGMENT_DURATION] = m } } }
-    fun setAdasSensitivity(s: String)   { viewModelScope.launch { dataStore.edit { it[KEY_ADAS_SENSITIVITY] = s } } }
+    fun setAdasSensitivity(s: String)   { adasAnalyzer.sensitivity = s; viewModelScope.launch { dataStore.edit { it[KEY_ADAS_SENSITIVITY] = s } } }
     fun setLdwEnabled(v: Boolean)       { adasAnalyzer.ldwEnabled           = v; viewModelScope.launch { dataStore.edit { it[KEY_LDW]        = v } } }
     fun setFcwEnabled(v: Boolean)       { adasAnalyzer.fcwEnabled           = v; viewModelScope.launch { dataStore.edit { it[KEY_FCW]        = v } } }
     fun setSignEnabled(v: Boolean)      { adasAnalyzer.signDetectionEnabled = v; viewModelScope.launch { dataStore.edit { it[KEY_SIGN]       = v } } }

@@ -8,6 +8,7 @@ import com.yourapp.obd.data.camera.VideoRecorder
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
+import javax.inject.Singleton
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 
@@ -15,12 +16,12 @@ import dagger.hilt.components.SingletonComponent
 @InstallIn(SingletonComponent::class)
 object CameraModule {
 
-    @Provides
+    @Provides @Singleton
     fun provideAdasAnalyzer(@ApplicationContext context: Context): AdasAnalyzer {
         return AdasAnalyzer(context)
     }
 
-    @Provides
+    @Provides @Singleton
     fun provideVideoRecorder(@ApplicationContext context: Context): VideoRecorder {
         return VideoRecorder(context)
     }
