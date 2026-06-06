@@ -292,9 +292,9 @@ fun DrawScope.drawAdasGrid(
     }
 
     listOf(
-        Triple(tDanger,  Color(0xCCFF1744)),
-        Triple(tWarning, Color(0xCCFF6D00)),
-        Triple(tCaution, Color(0xCCFFEA00))
+        tDanger to Color(0xCCFF1744),
+        tWarning to Color(0xCCFF6D00),
+        tCaution to Color(0xCCFFEA00)
     ).forEach { (t, color) ->
         drawLine(color = color, start = lp(t), end = rp(t), strokeWidth = 2.5f, cap = StrokeCap.Round)
     }
