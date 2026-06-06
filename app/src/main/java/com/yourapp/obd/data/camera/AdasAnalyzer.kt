@@ -42,6 +42,11 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
     var signDetectionEnabled = false
     var dmsEnabled = false
     var pedestrianEnabled = false
+    var adasWithoutObd = false
+    var horizonPosition = 0.42f
+    var dangerZoneM = 5
+    var warningZoneM = 10
+    var cautionZoneM = 20
 
     // Чувствительность (LOW/MEDIUM/HIGH)
     var sensitivity: String = "MEDIUM"
@@ -97,18 +102,24 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
         val mat = Mat()
         Utils.bitmapToMat(rotated, mat)
 
+        val effectiveSpeed = effectiveSpeedKmh()
         scope.launch {
             try {
-                if (ldwEnabled && currentSpeedKmh >= ldwMinSpeed) analyzeLdw(mat.clone())
-                if (fcwEnabled && currentSpeedKmh >= fcwMinSpeed) analyzeFcw(mat.clone())
+                if (ldwEnabled && effectiveSpeed >= ldwMinSpeed) analyzeLdw(mat.clone())
+                if (fcwEnabled && effectiveSpeed >= fcwMinSpeed) analyzeFcw(mat.clone(), effectiveSpeed)
             } finally { mat.release() }
         }
     }
 
+    private fun effectiveSpeedKmh(): Int =
+        if (currentSpeedKmh > 0) currentSpeedKmh
+        else if (adasWithoutObd) 50
+        else 0
+
     private fun analyzeLdw(mat: Mat) {
         try {
             val h = mat.rows(); val w = mat.cols()
-            val roiStart = (h * 0.4).toInt()
+            val roiStart = (h * horizonPosition).toInt()
             val roi = mat.submat(roiStart, h, 0, w)
             val gray = Mat(); Imgproc.cvtColor(roi, gray, Imgproc.COLOR_RGB2GRAY)
             val blurred = Mat(); Imgproc.GaussianBlur(gray, blurred, Size(5.0, 5.0), 0.0)
@@ -146,10 +157,10 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
         mat.release()
     }
 
-    private fun analyzeFcw(mat: Mat) {
+    private fun analyzeFcw(mat: Mat, effectiveSpeed: Int) {
         try {
             val h = mat.rows(); val w = mat.cols()
-            val horizonY = (h * 0.4).toInt()
+            val horizonY = (h * horizonPosition).toInt()
             val roi = mat.submat(horizonY, h, 0, w)
             val gray = Mat(); Imgproc.cvtColor(roi, gray, Imgproc.COLOR_RGB2GRAY)
 
@@ -196,14 +207,9 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
 
                 val now = System.currentTimeMillis()
                 if (now - lastFcwAlertTime > FCW_COOLDOWN_MS) {
-                    val relSpeed = currentSpeedKmh / 3.6f
+                    val relSpeed = effectiveSpeed / 3.6f
                     val ttc = if (relSpeed > 0.1f) smoothed / relSpeed else 30f
-                    val level = when {
-                        smoothed < 5f || ttc < 1.0f -> AlertLevel.DANGER
-                        smoothed < 12f || ttc < 2.0f -> AlertLevel.WARNING
-                        smoothed < 28f -> AlertLevel.CAUTION
-                        else -> null
-                    }
+                    val level = fcwLevel(smoothed, ttc)
                     if (level != null) {
                         lastFcwAlertTime = now
                         scope.launch { _alerts.emit(AdasAlert.ForwardCollision(level, ttc.coerceAtMost(15f))) }
@@ -214,6 +220,13 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
             }
         } catch (_: Exception) {}
         mat.release()
+    }
+
+    private fun fcwLevel(distanceM: Float, ttc: Float): AlertLevel? = when {
+        distanceM <= dangerZoneM || ttc < 1.0f -> AlertLevel.DANGER
+        distanceM <= warningZoneM || ttc < 2.0f -> AlertLevel.WARNING
+        distanceM <= cautionZoneM -> AlertLevel.CAUTION
+        else -> null
     }
 
     private fun rotateBitmap(bitmap: Bitmap, degrees: Float): Bitmap {

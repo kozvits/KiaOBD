@@ -31,9 +31,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
@@ -56,9 +53,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yourapp.obd.ui.theme.AccentCyan
 import com.yourapp.obd.ui.theme.DarkBackground
 import com.yourapp.obd.ui.theme.DarkSurface
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -67,23 +61,16 @@ fun SettingsScreen(
     scrollToSection: String? = null,
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
-    val state          by viewModel.settingsState.collectAsStateWithLifecycle()
-    val isUpdating     by viewModel.isUpdatingSpeedcam.collectAsStateWithLifecycle()
-    val isRollingBack  by viewModel.isRollingBack.collectAsStateWithLifecycle()
-    val updateResult   by viewModel.speedcamUpdateResult.collectAsStateWithLifecycle()
-    val snackbar       = remember { SnackbarHostState() }
-    val listState      = rememberLazyListState()
+    val state     by viewModel.settingsState.collectAsStateWithLifecycle()
+    val listState = rememberLazyListState()
 
     val sectionIndex = when (scrollToSection) {
+        "bluetooth"        -> 0
         "video"            -> 1
-        "adas_calibration" -> 3
-        "adas_sensitivity" -> 4
-        "adas_modules"     -> 5
+        "adas_calibration" -> 2
+        "adas_sensitivity" -> 3
+        "adas_modules"     -> 4
         else -> null
-    }
-
-    LaunchedEffect(updateResult) {
-        updateResult?.let { snackbar.showSnackbar(it); viewModel.clearUpdateResult() }
     }
 
     LaunchedEffect(sectionIndex) {
@@ -103,11 +90,6 @@ fun SettingsScreen(
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = DarkSurface)
             )
-        },
-        snackbarHost = {
-            SnackbarHost(snackbar) { data ->
-                Snackbar(snackbarData = data, containerColor = DarkSurface, contentColor = Color.White)
-            }
         },
         containerColor = DarkBackground
     ) { padding ->
@@ -138,32 +120,6 @@ fun SettingsScreen(
                     DropdownSetting("Размер буфера", state.bufferSizeGb.toString(),
                         listOf("1" to "1 ГБ","2" to "2 ГБ","4" to "4 ГБ","8" to "8 ГБ","16" to "16 ГБ")
                     ) { viewModel.setBufferSizeGb(it.toInt()) }
-                }
-            }
-
-            item(key = "speedcam") {
-                SectionCard("Базы камер SpeedCam") {
-                    Text("Настройки камер SpeedCam перенесены в отдельное меню:",
-                        color = Color.Gray, fontSize = 12.sp)
-                    Spacer(Modifier.height(4.dp))
-                    Text("Меню → Сигнатурный радар → База камер SpeedCam",
-                        color = AccentCyan, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-                    Spacer(Modifier.height(8.dp))
-                    if (state.speedcamTotalCameras > 0) {
-                        Text("В базе: ${state.speedcamTotalCameras} камер",
-                            color = Color.White, fontSize = 12.sp)
-                    }
-                    if (state.speedcamLastUpdate > 0L) {
-                        Text(
-                            "Последнее обновление: ${SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault()).format(Date(state.speedcamLastUpdate))}",
-                            color = Color.Gray, fontSize = 11.sp)
-                    }
-                    Spacer(Modifier.height(8.dp))
-                    SettingsSwitch(
-                        label = "Автообновление ежедневно в 03:00",
-                        checked = state.speedcamAutoUpdate,
-                        onCheckedChange = { viewModel.setSpeedcamAutoUpdate(it) }
-                    )
                 }
             }
 
@@ -256,6 +212,21 @@ fun SettingsScreen(
                     SettingsSwitch("Детекция знаков скорости",            state.signEnabled)           { viewModel.setSignEnabled(it) }
                     SettingsSwitch("DMS — Усталость водителя",            state.dmsEnabled)            { viewModel.setDmsEnabled(it) }
                     SettingsSwitch("Детекция пешеходов",                  state.pedestrianEnabled)     { viewModel.setPedestrianEnabled(it) }
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        "Дополнительно",
+                        color = AccentCyan, fontSize = 12.sp, fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    SettingsSwitch(
+                        label = "ADAS без OBD (тестовый режим)",
+                        checked = state.adasWithoutObd,
+                        onCheckedChange = { viewModel.setAdasWithoutObd(it) }
+                    )
+                    Text(
+                        "Включает FCW/LDW при отсутствии данных скорости с адаптера OBD",
+                        color = Color.Gray, fontSize = 11.sp
+                    )
                 }
             }
 

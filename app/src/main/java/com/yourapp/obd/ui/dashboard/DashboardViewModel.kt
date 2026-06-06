@@ -21,7 +21,6 @@ import com.yourapp.obd.ui.settings.SettingsViewModel
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
-import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -112,7 +111,11 @@ class DashboardViewModel @Inject constructor(
     private fun collectDistance() {
         viewModelScope.launch {
             while (true) {
-                _fcwDistanceM.value = cameraRepository.lastVehicleDistanceM
+                val distance = cameraRepository.lastVehicleDistanceM
+                _fcwDistanceM.value = distance
+                if (distance == null && _lastAlert.value is AdasAlert.ForwardCollision) {
+                    _lastAlert.value = null
+                }
                 kotlinx.coroutines.delay(100)
             }
         }
@@ -148,7 +151,7 @@ class DashboardViewModel @Inject constructor(
     fun stopRecording()  = recordVideoUseCase.stop()
 
     companion object {
-        val KEY_DEVICE_ADDRESS = stringPreferencesKey("obd_device_address")
+        val KEY_DEVICE_ADDRESS = SettingsViewModel.KEY_DEVICE_ADDRESS
     }
 
     override fun onCleared() {

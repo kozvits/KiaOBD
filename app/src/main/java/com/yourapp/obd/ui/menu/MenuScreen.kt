@@ -106,7 +106,7 @@ fun MenuScreen(
 
         ExpandableSection(
             icon = Icons.Default.Speed,
-            title = "Приборная панель",
+            title = "Приборная панель (OBD)",
             accentColor = Color(0xFF00E676)
         ) {
             MenuItem(
@@ -120,6 +120,12 @@ fun MenuScreen(
                 label = "Диагностика DTC",
                 desc = "Коды ошибок ЭБУ",
                 onClick = onNavigateToDtc
+            )
+            MenuItem(
+                icon = Icons.Default.Settings,
+                label = "Bluetooth OBD-II",
+                desc = "Выбор адаптера ELM327",
+                onClick = { onNavigateToSettings("bluetooth") }
             )
         }
 
@@ -157,12 +163,6 @@ fun MenuScreen(
                 icon = Icons.Default.Radar,
                 label = "База камер SpeedCam",
                 desc = "Источники, обновление, история, откат",
-                onClick = onNavigateToSpeedcam
-            )
-            MenuItem(
-                icon = Icons.Default.Sensors,
-                label = "Автоопределение камер",
-                desc = "Настройки сигнатурного радара (скоро выйдет)",
                 onClick = onNavigateToSpeedcam
             )
         }

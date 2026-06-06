@@ -51,19 +51,20 @@ fun DvrAdasScreen(
 ) {
     val obdData          by viewModel.obdData.collectAsStateWithLifecycle()
     val lastAlert        by viewModel.lastAlert.collectAsStateWithLifecycle()
+    val fcwDistanceM     by viewModel.fcwDistanceM.collectAsStateWithLifecycle()
     val isRecording      by viewModel.isRecording.collectAsStateWithLifecycle()
     val connectionState  by viewModel.connectionState.collectAsStateWithLifecycle()
     val calibration      by viewModel.adasCalibration.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val laneColor = if (lastAlert is AdasAlert.LaneDeparture) Color(0xCCFF1744) else Color(0xBB00E676)
-    val fcwAlert  = lastAlert as? AdasAlert.ForwardCollision
-    val fcwColor  = when (fcwAlert?.level) {
-        AlertLevel.DANGER  -> Color(0x66FF1744)
-        AlertLevel.WARNING -> Color(0x66FF6D00)
-        AlertLevel.CAUTION -> Color(0x44FFEA00)
-        null               -> null
-    }
+    val activeFcwLevel = resolveFcwLevel(
+        distanceM = fcwDistanceM,
+        dangerM = calibration.dangerZoneM,
+        warningM = calibration.warningZoneM,
+        cautionM = calibration.cautionZoneM,
+        alertLevel = (lastAlert as? AdasAlert.ForwardCollision)?.level
+    )
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
 
@@ -81,14 +82,15 @@ fun DvrAdasScreen(
                 .fillMaxSize()
                 .drawBehind {
                     drawAdasGrid(
-                        laneColor    = laneColor,
-                        fcwColor     = fcwColor,
-                        horizonY     = calibration.horizonPosition,
-                        laneHalfW    = calibration.laneWidthPercent,
-                        vpXRatio     = calibration.vanishingPointX,
-                        dangerM      = calibration.dangerZoneM,
-                        warningM     = calibration.warningZoneM,
-                        cautionM     = calibration.cautionZoneM
+                        laneColor       = laneColor,
+                        activeFcwLevel  = activeFcwLevel,
+                        obstacleDistM   = fcwDistanceM,
+                        horizonY        = calibration.horizonPosition,
+                        laneHalfW       = calibration.laneWidthPercent,
+                        vpXRatio        = calibration.vanishingPointX,
+                        dangerM         = calibration.dangerZoneM,
+                        warningM        = calibration.warningZoneM,
+                        cautionM        = calibration.cautionZoneM
                     )
                 }
         )
@@ -140,8 +142,19 @@ fun DvrAdasScreen(
         ) {
             HudCard {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("РАДАР",   color = Color.Gray, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                    Text("АКТИВЕН",color = GreenOk,    fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("ДИСТ.", color = Color.Gray, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                    val dist = fcwDistanceM
+                    Text(
+                        text = if (dist != null) "${dist.toInt()} м" else "--",
+                        color = when (activeFcwLevel) {
+                            AlertLevel.DANGER  -> AlertRed
+                            AlertLevel.WARNING -> AlertOrange
+                            AlertLevel.CAUTION -> AlertYellow
+                            null               -> GreenOk
+                        },
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
                 }
             }
             HudCard {
@@ -192,22 +205,43 @@ fun DvrAdasScreen(
     }
 }
 
+private fun resolveFcwLevel(
+    distanceM: Float?,
+    dangerM: Int,
+    warningM: Int,
+    cautionM: Int,
+    alertLevel: AlertLevel?
+): AlertLevel? {
+    if (distanceM != null) {
+        return when {
+            distanceM <= dangerM -> AlertLevel.DANGER
+            distanceM <= warningM -> AlertLevel.WARNING
+            distanceM <= cautionM -> AlertLevel.CAUTION
+            else -> null
+        }
+    }
+    return alertLevel
+}
+
+private fun alertLevelColor(level: AlertLevel, alpha: Float): Color = when (level) {
+    AlertLevel.DANGER  -> Color(0x66FF1744).copy(alpha = alpha)
+    AlertLevel.WARNING -> Color(0x66FF6D00).copy(alpha = alpha)
+    AlertLevel.CAUTION -> Color(0x66FFEA00).copy(alpha = alpha)
+}
+
 /**
- * Полная ADAS сетка с калибруемыми параметрами:
- * - Точка схода (horizonY, vpXRatio)
- * - Ширина полосы (laneHalfW)
- * - Зоны: DANGER / WARNING / CAUTION / SAFE с метками дистанции
- * - Подсветка зоны при FCW алерте
+ * ADAS-сетка с калибруемыми зонами и динамической подсветкой по дистанции до препятствия.
  */
 fun DrawScope.drawAdasGrid(
-    laneColor:  Color,
-    fcwColor:   Color?,
-    horizonY:   Float,
-    laneHalfW:  Float,
-    vpXRatio:   Float,
-    dangerM:    Int,
-    warningM:   Int,
-    cautionM:   Int
+    laneColor:      Color,
+    activeFcwLevel: AlertLevel?,
+    obstacleDistM:  Float?,
+    horizonY:       Float,
+    laneHalfW:      Float,
+    vpXRatio:       Float,
+    dangerM:        Int,
+    warningM:       Int,
+    cautionM:       Int
 ) {
     val w  = size.width
     val h  = size.height
@@ -218,24 +252,38 @@ fun DrawScope.drawAdasGrid(
     val leftBase  = Offset(vpX - w * laneHalfW, h)
     val rightBase = Offset(vpX + w * laneHalfW, h)
 
-    // t=0 => нижний край (близко), t=1 => точка схода (далеко)
     fun lp(t: Float) = Offset(leftBase.x  + (vpX - leftBase.x)  * t, h + (vpY - h) * t)
     fun rp(t: Float) = Offset(rightBase.x + (vpX - rightBase.x) * t, h + (vpY - h) * t)
 
-    // Зоны (t границы): DANGER=0..0.20, WARNING=0.20..0.42, CAUTION=0.42..0.68, SAFE=0.68..1.0
-    data class Zone(val tNear: Float, val tFar: Float, val baseColor: Color, val label: String, val meters: Int)
+    fun metersToT(meters: Float): Float =
+        (meters / cautionM.coerceAtLeast(1)).coerceIn(0.02f, 1f)
+
+    val tDanger  = metersToT(dangerM.toFloat())
+    val tWarning = metersToT(warningM.toFloat())
+    val tCaution = metersToT(cautionM.toFloat())
+
+    data class Zone(
+        val tNear: Float,
+        val tFar: Float,
+        val baseColor: Color,
+        val level: AlertLevel?
+    )
     val zones = listOf(
-        Zone(0.00f, 0.20f, Color(0x66FF1744), "●  ${dangerM} м",  dangerM),
-        Zone(0.20f, 0.42f, Color(0x55FF6D00), "●  ${warningM} м", warningM),
-        Zone(0.42f, 0.68f, Color(0x44FFEA00), "●  ${cautionM} м", cautionM),
-        Zone(0.68f, 1.00f, Color(0x2200E676), "БЕЗОПАСНО",         0)
+        Zone(0.00f,    tDanger,  Color(0x66FF1744), AlertLevel.DANGER),
+        Zone(tDanger,  tWarning, Color(0x55FF6D00), AlertLevel.WARNING),
+        Zone(tWarning, tCaution, Color(0x44FFEA00), AlertLevel.CAUTION),
+        Zone(tCaution, 1.00f,    Color(0x2200E676), null)
     )
 
-    // Заливка зон
     zones.forEach { z ->
         val nL = lp(z.tNear); val nR = rp(z.tNear)
         val fL = lp(z.tFar);  val fR = rp(z.tFar)
-        val fillColor = if (fcwColor != null && z.tNear == 0.00f) fcwColor else z.baseColor
+        val highlighted = activeFcwLevel != null && z.level == activeFcwLevel
+        val fillColor = if (highlighted) {
+            alertLevelColor(activeFcwLevel!!, 0.95f)
+        } else {
+            z.baseColor
+        }
         val path = Path().apply {
             moveTo(nL.x, nL.y); lineTo(nR.x, nR.y)
             lineTo(fR.x, fR.y); lineTo(fL.x, fL.y); close()
@@ -243,14 +291,34 @@ fun DrawScope.drawAdasGrid(
         drawPath(path, fillColor)
     }
 
-    // Горизонтальные линии расстояний с подписями
-    val distLines = listOf(
-        Triple(0.20f, "${dangerM} м",  Color(0xCCFF1744)),
-        Triple(0.42f, "${warningM} м", Color(0xCCFF6D00)),
-        Triple(0.68f, "${cautionM} м", Color(0xCCFFEA00))
-    )
-    distLines.forEach { (t, _, color) ->
+    listOf(
+        Triple(tDanger,  Color(0xCCFF1744)),
+        Triple(tWarning, Color(0xCCFF6D00)),
+        Triple(tCaution, Color(0xCCFFEA00))
+    ).forEach { (t, color) ->
         drawLine(color = color, start = lp(t), end = rp(t), strokeWidth = 2.5f, cap = StrokeCap.Round)
+    }
+
+    obstacleDistM?.let { dist ->
+        val t = metersToT(dist.coerceIn(0f, cautionM.toFloat()))
+        val left = lp(t)
+        val right = rp(t)
+        val markerColor = when (activeFcwLevel) {
+            AlertLevel.DANGER  -> Color(0xFFFF1744)
+            AlertLevel.WARNING -> Color(0xFFFF6D00)
+            AlertLevel.CAUTION -> Color(0xFFFFEA00)
+            null               -> Color.White
+        }
+        drawLine(
+            color = markerColor,
+            start = left,
+            end = right,
+            strokeWidth = 5f,
+            cap = StrokeCap.Round
+        )
+        val center = Offset((left.x + right.x) / 2f, (left.y + right.y) / 2f)
+        drawCircle(color = markerColor, radius = 8f, center = center)
+        drawCircle(color = Color.White, radius = 4f, center = center)
     }
 
     // Пунктирная центральная ось
