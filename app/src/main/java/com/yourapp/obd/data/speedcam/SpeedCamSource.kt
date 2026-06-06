@@ -19,8 +19,8 @@ class HttpSpeedCamSource(
 ) : SpeedCamSource {
 
     companion object {
-        private const val CONNECT_TIMEOUT_MS = 15_000L
-        private const val READ_TIMEOUT_MS = 30_000L
+        private const val CONNECT_TIMEOUT_MS = 20_000L
+        private const val READ_TIMEOUT_MS = 90_000L
         private const val MAX_REDIRECTS = 5
         private const val MAX_RESPONSE_BYTES = 10 * 1024 * 1024L
     }
@@ -29,9 +29,16 @@ class HttpSpeedCamSource(
         try {
             val responseBytes = downloadWithRedirects(url, 0)
             val body = responseBytes.toString(Charsets.UTF_8)
+            if (body.contains("\"remark\"")) {
+                val remark = SpeedCamParser.extractOverpassRemark(body)
+                return@withContext Result.failure(
+                    SpeedCamException("Источник $name: $remark")
+                )
+            }
+
             val result = SpeedCamParser.parseAuto(body)
 
-            if (result.cameras.isEmpty() && body.isNotBlank()) {
+            if (result.cameras.isEmpty() && body.isNotBlank() && !SpeedCamParser.isValidEmptyOsmResponse(body)) {
                 return@withContext Result.failure(
                     SpeedCamException("Источник $name: получено 0 камер после парсинга")
                 )

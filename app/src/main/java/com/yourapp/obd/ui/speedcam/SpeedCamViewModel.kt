@@ -19,6 +19,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -83,6 +84,7 @@ class SpeedCamViewModel @Inject constructor(
             }
         }
         viewModelScope.launch {
+            ensureDefaultBelarusSources()
             refreshDbState()
         }
         viewModelScope.launch {
@@ -142,19 +144,31 @@ class SpeedCamViewModel @Inject constructor(
     }
 
     fun applyCountryPreset() {
-        val countryIso = SpeedCamSourceProvider.extractCountryIso()
-        val overpassUrl = if (countryIso != null) {
-            SpeedCamSourceProvider.buildOverpassUrl(countryIso)
-        } else {
-            SpeedCamSourceProvider.buildOverpassUrl()
+        applyPreset(0)
+    }
+
+    private suspend fun ensureDefaultBelarusSources() {
+        val prefs = dataStore.data.first()
+        val urls = listOf(
+            prefs[KEY_URL1].orEmpty(),
+            prefs[KEY_URL2].orEmpty(),
+            prefs[KEY_URL3].orEmpty()
+        ).filter { it.isNotBlank() }
+
+        if (urls.isNotEmpty() && urls.all { isBelarusSource(it) }) return
+
+        val preset = SpeedCamConstants.DEFAULT_PRESET
+        dataStore.edit {
+            it[KEY_URL1] = preset.url1
+            it[KEY_URL2] = preset.url2
+            it[KEY_URL3] = preset.url3
         }
-        viewModelScope.launch {
-            dataStore.edit {
-                it[KEY_URL1] = overpassUrl
-                it[KEY_URL2] = ""
-                it[KEY_URL3] = ""
-            }
-        }
+    }
+
+    private fun isBelarusSource(url: String): Boolean {
+        val lower = url.lowercase()
+        return lower.contains("iso3166-1") && lower.contains("by") ||
+            lower.contains("overpass") && lower.contains("%22by%22")
     }
 
     fun setAutoUpdate(enabled: Boolean) {

@@ -9,7 +9,7 @@ import com.yourapp.obd.domain.model.SpeedCamType
 @Entity(
     tableName = "speed_cameras",
     indices = [
-        Index(value = ["latitude", "longitude"], unique = true),
+        Index(value = ["latitude", "longitude"]),
         Index(value = ["type"]),
         Index(value = ["updatedAt"])
     ]

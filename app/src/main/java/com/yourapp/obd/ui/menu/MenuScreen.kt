@@ -161,8 +161,8 @@ fun MenuScreen(
         ) {
             MenuItem(
                 icon = Icons.Default.Radar,
-                label = "База камер SpeedCam",
-                desc = "Источники, обновление, история, откат",
+                label = "База камер SpeedCam (РБ)",
+                desc = "Источники OSM для Беларуси, обновление, откат",
                 onClick = onNavigateToSpeedcam
             )
         }

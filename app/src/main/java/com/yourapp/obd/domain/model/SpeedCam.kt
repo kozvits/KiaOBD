@@ -37,7 +37,8 @@ data class SpeedCamUpdateStats(
     val summary: String
         get() = buildString {
             if (isError) {
-                append("Ошибка обновления всех источников")
+                append("Ошибка обновления")
+                if (sourcesFailed > 0) append(" ($sourcesFailed источн.)")
                 return@buildString
             }
             append("База камер обновлена")
@@ -45,5 +46,6 @@ data class SpeedCamUpdateStats(
             if (removedCameras > 0) append(", -$removedCameras удалено")
             if (modifiedCameras > 0) append(", ~$modifiedCameras изменено")
             append(". Всего активных: $totalActive")
+            if (sourcesFailed > 0) append(" (ошибок источников: $sourcesFailed)")
         }
 }

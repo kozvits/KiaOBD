@@ -201,6 +201,20 @@ object SpeedCamParser {
         return result
     }
 
+    fun isValidEmptyOsmResponse(body: String): Boolean {
+        val trimmed = body.trim()
+        return trimmed.contains("\"elements\"") &&
+            (trimmed.contains("\"elements\":[]") || trimmed.contains("\"elements\": []"))
+    }
+
+    fun extractOverpassRemark(body: String): String {
+        return try {
+            JSONObject(body).optString("remark").ifBlank { "ошибка Overpass API" }
+        } catch (_: Exception) {
+            "ошибка Overpass API"
+        }
+    }
+
     fun parseOsmJson(json: String): ParseResult {
         val root = JSONObject(json)
         val elements = root.optJSONArray("elements") ?: return ParseResult(emptyList(), root.optString("version").ifBlank { null }, null)
@@ -208,12 +222,22 @@ object SpeedCamParser {
         for (i in 0 until elements.length()) {
             val el = elements.getJSONObject(i)
             val tags = el.optJSONObject("tags") ?: continue
-            if (!tags.optString("highway", "").startsWith("speed") &&
-                !tags.optString("enforcement", "").startsWith("speed")) continue
+            val highway = tags.optString("highway", "")
+            val enforcement = tags.optString("enforcement", "")
+            if (!highway.contains("speed") && !enforcement.contains("speed")) continue
 
-            val id = "osm_${el.optLong("id", 0)}"
-            val lat = el.optDouble("lat", 0.0)
-            val lon = el.optDouble("lon", 0.0)
+            val id = "osm_${el.optString("type", "node")}_${el.optLong("id", 0)}"
+            val center = el.optJSONObject("center")
+            val lat = when {
+                el.has("lat") -> el.optDouble("lat", 0.0)
+                center != null -> center.optDouble("lat", 0.0)
+                else -> 0.0
+            }
+            val lon = when {
+                el.has("lon") -> el.optDouble("lon", 0.0)
+                center != null -> center.optDouble("lon", 0.0)
+                else -> 0.0
+            }
             if (lat == 0.0 && lon == 0.0) continue
 
             val maxspeed = tags.optString("maxspeed").toIntOrNull()

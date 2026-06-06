@@ -88,7 +88,7 @@ fun SpeedCamScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Сигнатурный радар и SpeedCam", color = Color.White) },
+                title = { Text("SpeedCam — Беларусь", color = Color.White) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
                         Icon(Icons.Default.ArrowBack, null, tint = Color.White)
@@ -147,8 +147,7 @@ fun SpeedCamScreen(
             item(key = "sources") {
                 SectionCard("Источники данных") {
                     Text(
-                        "URL для загрузки баз камер контроля скорости. " +
-                        "Поддерживаются JSON, CSV и OSM Overpass API.",
+                        "Источники камер контроля скорости для Республики Беларусь (OSM Overpass).",
                         color = Color.Gray,
                         fontSize = 12.sp,
                         modifier = Modifier.padding(bottom = 8.dp)
@@ -435,7 +434,7 @@ private fun PresetSelector(
                 modifier = Modifier.size(14.dp)
             )
             Spacer(Modifier.width(4.dp))
-            Text("Авто", color = AccentCyan, fontSize = 11.sp)
+            Text("РБ", color = AccentCyan, fontSize = 11.sp)
         }
     }
 }
