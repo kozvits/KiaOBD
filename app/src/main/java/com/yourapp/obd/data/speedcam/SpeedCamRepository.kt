@@ -137,7 +137,6 @@ class SpeedCamRepository @Inject constructor(
 
         var newCount = 0
         var modifiedCount = 0
-        val activeIds = mutableListOf<String>()
 
         val oldHashMap = mutableMapOf<String, String>()
         for (h in oldHashes) {
@@ -147,7 +146,6 @@ class SpeedCamRepository @Inject constructor(
         }
 
         for (cam in newCameras) {
-            activeIds.add(cam.id)
             val oldHash = oldHashMap[cam.id]
             when {
                 oldHash == null -> newCount++
@@ -181,8 +179,7 @@ class SpeedCamRepository @Inject constructor(
         val entities = newCameras.map { SpeedCamEntity.fromDomain(it) }
 
         return try {
-            dao.deleteExcept(activeIds)
-            dao.upsertAll(entities)
+            dao.replaceAll(entities)
 
             val totalActive = dao.countActive()
 

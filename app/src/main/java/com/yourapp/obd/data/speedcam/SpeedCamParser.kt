@@ -108,9 +108,10 @@ object SpeedCamParser {
         val lines = csv.lines().filter { it.isNotBlank() }
         if (lines.size < 2) return ParseResult(emptyList(), null, null)
 
-        val headers = lines.first().split(",").map { it.trim().lowercase() }
+        val delimiter = detectCsvDelimiter(lines.first())
+        val headers = lines.first().split(delimiter).map { it.trim().lowercase() }
         val cameras = lines.drop(1).mapNotNull { line ->
-            val values = line.split(",").map { it.trim() }
+            val values = line.split(delimiter).map { it.trim().removePrefix("+") }
             if (values.size < headers.size) return@mapNotNull null
 
             val raw = headers.zip(values).toMap()
@@ -131,8 +132,10 @@ object SpeedCamParser {
                 ?: map["vma"]?.toIntOrNull()
 
             val equipement = map["equipement"].orEmpty()
+            val typeCode = typeStr.uppercase()
             val camType = when {
                 type != SpeedCamType.UNKNOWN -> type.name
+                typeCode in FRENCH_RADAR_TYPES -> FRENCH_RADAR_TYPES[typeCode]!!
                 equipement.contains("ETT") || equipement.contains("ETF") || equipement.contains("ETD") -> "SPEED"
                 equipement.contains("ETFR") || equipement.contains("RADAR_FEU") -> "REDLIGHT"
                 equipement.contains("ETVM") || equipement.contains("RADAR_TRONCON") -> "AVERAGE"
@@ -162,15 +165,30 @@ object SpeedCamParser {
         return ParseResult(cameras, null, null)
     }
 
+    private val FRENCH_RADAR_TYPES = mapOf(
+        "ETF" to "SPEED", "ETD" to "SPEED", "ETT" to "SPEED", "ETU" to "SPEED",
+        "ETVM" to "AVERAGE", "ETFR" to "REDLIGHT", "ETPN" to "REDLIGHT"
+    )
+
     private val CSV_ALIASES = mapOf(
         "equipement" to "type",
+        "type de radar" to "type",
+        "numéro de radar" to "id",
+        "numero de radar" to "id",
         "vitesse_vehicules_legers_kmh" to "speed_limit",
         "date_installation" to "installed_at",
+        "date de mise en service" to "installed_at",
         "date_heure_dernier_changement" to "updated_at",
         "voie" to "road",
         "vma" to "speed_limit",
         "maxspeed" to "speed_limit"
     )
+
+    private fun detectCsvDelimiter(headerLine: String): String {
+        val semicolons = headerLine.count { it == ';' }
+        val commas = headerLine.count { it == ',' }
+        return if (semicolons > commas) ";" else ","
+    }
 
     private fun mapCsvAliases(raw: Map<String, String>): Map<String, String> {
         val result = raw.toMutableMap()
@@ -233,7 +251,7 @@ object SpeedCamParser {
             firstLine.contains("\"elements\"") || firstLine.contains("highway=speed_camera") -> parseOsmJson(trimmed)
             trimmed.startsWith("{") -> parseJson(trimmed)
             trimmed.startsWith("[") -> parseJson("""{"cameras": $trimmed}""")
-            trimmed.contains(",") && trimmed.lines().size > 1 -> parseCsv(trimmed)
+            trimmed.lines().size > 1 && (trimmed.contains(",") || trimmed.contains(";")) -> parseCsv(trimmed)
             else -> ParseResult(emptyList(), null, null)
         }
     }
@@ -242,12 +260,14 @@ object SpeedCamParser {
         if (value == null) return null
         return try {
             when {
-                value.contains("-") -> {
+                value.contains("-") || value.contains("/") -> {
                     val formats = listOf(
                         java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'", java.util.Locale.US),
                         java.text.SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ssZ", java.util.Locale.US),
                         java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss", java.util.Locale.US),
-                        java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                        java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US),
+                        java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.US),
+                        java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.US)
                     )
                     for (fmt in formats) {
                         try { return fmt.parse(value)?.time } catch (_: Exception) { }

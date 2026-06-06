@@ -21,8 +21,8 @@ object SpeedCamConstants {
         SourcePreset(
             name = "Беларусь (OSM Overpass)",
             description = "Камеры из OpenStreetMap для РБ (городские и трассовые). Обновляется сообществом. Бесплатно.",
-            url1 = "https://overpass-api.de/api/interpreter?data=%5Bout%3Ajson%5D%5Btimeout%3A45%5D%3Barea%5B%22name%22%3D%22Belarus%22%5D%5Bboundary%3Dadministrative%5D-%3E.a%3B%28node%28area.a%29%5B%22highway%22%3D%22speed_camera%22%5D%3Bnode%28area.a%29%5B%22enforcement%22%3D%22speed_camera%22%5D%3Bnode%28area.a%29%5B%22highway%22%3D%22speed_display%22%5D%3B%29%3Bout%20body%3B",
-            url2 = "https://overpass-api.de/api/interpreter?data=%5Bout%3Ajson%5D%5Btimeout%3A45%5D%3Barea%5B%22name%22%3D%22Belarus%22%5D%5Bboundary%3Dadministrative%5D-%3E.a%3B%28way%28area.a%29%5B%22highway%22%3D%22speed_camera%22%5D%3Brelation%28area.a%29%5B%22highway%22%3D%22speed_camera%22%5D%3B%29%3Bout%20center%3B",
+            url1 = "https://overpass-api.de/api/interpreter?data=%5Bout%3Ajson%5D%5Btimeout%3A45%5D%3Barea%5B%22ISO3166-1%22%3D%22BY%22%5D%5Badmin_level%3D2%5D-%3E.a%3B%28node%28area.a%29%5B%22highway%22%3D%22speed_camera%22%5D%3Bnode%28area.a%29%5B%22enforcement%22%3D%22speed_camera%22%5D%3Bnode%28area.a%29%5B%22highway%22%3D%22speed_display%22%5D%3B%29%3Bout%20body%3B",
+            url2 = "https://overpass-api.de/api/interpreter?data=%5Bout%3Ajson%5D%5Btimeout%3A45%5D%3Barea%5B%22ISO3166-1%22%3D%22BY%22%5D%5Badmin_level%3D2%5D-%3E.a%3B%28way%28area.a%29%5B%22highway%22%3D%22speed_camera%22%5D%3Brelation%28area.a%29%5B%22highway%22%3D%22speed_camera%22%5D%3B%29%3Bout%20center%3B",
             url3 = ""
         ),
         SourcePreset(
@@ -36,8 +36,8 @@ object SpeedCamConstants {
         ),
         SourcePreset(
             name = "Мир (SpeedCams.world)",
-            description = "68 000+ камер в 44 странах, включая РБ. CSV из OSM, обновляется регулярно.",
-            url1 = "https://speedcams.world/download/all.csv"
+            description = "Камеры из OSM по странам. Укажите CSV-ссылку со страницы speedcams.world/download.",
+            url1 = ""
         ),
         SourcePreset(
             name = "Европа+СНГ (Lufop)",
@@ -51,8 +51,8 @@ object SpeedCamConstants {
         SourcePreset(
             name = "Франция (data.gouv.fr)",
             description = "Официальные данные ~3400 камер. CSV, обновляется ежемесячно. Без API-ключа.",
-            url1 = "https://www.data.gouv.fr/fr/datasets/r/87e2e9a4-c499-43e8-8580-7967a81c8e21",
-            url2 = "https://www.data.gouv.fr/fr/datasets/r/9820dd82-ec3f-424e-bd49-d0ffa49619c2"
+            url1 = "https://static.data.gouv.fr/resources/liste-des-radars-fixes-en-france/20251230-134204/jeu-de-donnees-liste-des-radars-fixes-en-france-12-2025.csv",
+            url2 = ""
         ),
         SourcePreset(
             name = "США (SpeedCameraAPI)",

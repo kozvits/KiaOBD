@@ -142,9 +142,9 @@ class SpeedCamViewModel @Inject constructor(
     }
 
     fun applyCountryPreset() {
-        val countryName = SpeedCamSourceProvider.extractCountryName()
-        val overpassUrl = if (countryName != null) {
-            SpeedCamSourceProvider.buildOverpassUrl(countryName)
+        val countryIso = SpeedCamSourceProvider.extractCountryIso()
+        val overpassUrl = if (countryIso != null) {
+            SpeedCamSourceProvider.buildOverpassUrl(countryIso)
         } else {
             SpeedCamSourceProvider.buildOverpassUrl()
         }
