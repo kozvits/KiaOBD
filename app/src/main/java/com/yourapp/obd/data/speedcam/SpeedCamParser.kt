@@ -272,7 +272,7 @@ object SpeedCamParser {
         val trimmed = data.trim()
         val firstLine = trimmed.lines().firstOrNull().orEmpty()
         return when {
-            firstLine.contains("\"elements\"") || firstLine.contains("highway=speed_camera") -> parseOsmJson(trimmed)
+            trimmed.contains("\"elements\"") || firstLine.contains("highway=speed_camera") -> parseOsmJson(trimmed)
             trimmed.startsWith("{") -> parseJson(trimmed)
             trimmed.startsWith("[") -> parseJson("""{"cameras": $trimmed}""")
             trimmed.lines().size > 1 && (trimmed.contains(",") || trimmed.contains(";")) -> parseCsv(trimmed)
