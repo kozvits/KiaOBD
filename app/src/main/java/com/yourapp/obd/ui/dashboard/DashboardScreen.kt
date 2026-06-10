@@ -285,14 +285,14 @@ private fun DigitalMetricsSection(obdData: OBDData, modifier: Modifier) {
         ) {
             MetricCard("ОЖ", obdData.coolantTempC?.let { "$it°C" } ?: "--", AccentCyan)
             MetricCard("MAP", obdData.mapKpa?.let { "$it кПа" } ?: "--", AccentCyan)
-            MetricCard("Дрос.", obdData.throttlePercent?.let { "${\"%.0f\".format(it)}%" } ?: "--", AccentCyan)
+            MetricCard("Дрос.", obdData.throttlePercent?.let { "${"%.0f".format(it)}%" } ?: "--", AccentCyan)
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            MetricCard("Топл.", obdData.fuelLevelPercent?.let { "${\"%.0f\".format(it)}%" } ?: "--", AccentCyan)
-            MetricCard("УОЗ", obdData.timingAdvanceDeg?.let { "${\"%.1f\".format(it)}°" } ?: "--", AccentCyan)
+            MetricCard("Топл.", obdData.fuelLevelPercent?.let { "${"%.0f".format(it)}%" } ?: "--", AccentCyan)
+            MetricCard("УОЗ", obdData.timingAdvanceDeg?.let { "${"%.1f".format(it)}°" } ?: "--", AccentCyan)
             MetricCard("ТВЗ", obdData.intakeAirTempC?.let { "$it°C" } ?: "--", AccentCyan)
         }
     }

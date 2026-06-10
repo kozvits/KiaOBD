@@ -55,7 +55,7 @@ class TripHistoryViewModel @Inject constructor(
             totalTrips = tripList.size,
             totalDistanceKm = totalDistance,
             totalTimeMinutes = totalTime,
-            avgSpeedKmh = avgSpeed.roundToInt(),
+            avgSpeedKmh = avgSpeed,
             maxSpeedKmh = maxSpeed
         )
     }

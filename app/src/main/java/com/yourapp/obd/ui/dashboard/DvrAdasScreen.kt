@@ -214,7 +214,7 @@ fun DvrAdasScreen(
                     Text("СЕТЬ", color = Color.Gray, fontSize = 9.sp)
                     val v = obdData.voltageV
                     Text(
-                        text       = if (v != null) "${\"%.1f\".format(v)}В" else "--",
+                        text       = if (v != null) "${"%.1f".format(v)}В" else "--",
                         color      = when { v == null -> Color.Gray; v < 11.5f -> AlertRed; v < 12.5f -> AlertYellow; else -> GreenOk },
                         fontSize   = 16.sp,
                         fontWeight = FontWeight.Bold
