@@ -1,6 +1,7 @@
 package com.yourapp.obd.ui.speedcam
 
 import android.content.Context
+import android.location.Location
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
@@ -8,18 +9,22 @@ import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.yourapp.obd.data.gps.LocationRepository
 import com.yourapp.obd.data.speedcam.SpeedCamConstants
 import com.yourapp.obd.data.speedcam.SpeedCamNotificationHelper
 import com.yourapp.obd.data.speedcam.SpeedCamRepository
-import com.yourapp.obd.data.speedcam.SpeedCamSourceProvider
 import com.yourapp.obd.data.speedcam.SpeedCamUpdateLogEntity
 import com.yourapp.obd.data.speedcam.SpeedCamUpdateWorker
+import com.yourapp.obd.domain.model.SpeedCam
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -31,7 +36,9 @@ data class SpeedCamScreenState(
     val lastUpdateTimestamp: Long = 0L,
     val totalCameras: Int = 0,
     val rollbackAvailable: Boolean = false,
-    val updateHistory: List<SpeedCamUpdateHistoryItem> = emptyList()
+    val updateHistory: List<SpeedCamUpdateHistoryItem> = emptyList(),
+    val nearbyCameras: List<NearbyCamItem> = emptyList(),
+    val currentLocation: String = ""
 )
 
 data class SpeedCamUpdateHistoryItem(
@@ -44,11 +51,18 @@ data class SpeedCamUpdateHistoryItem(
     val rollbackAvailable: Boolean
 )
 
+data class NearbyCamItem(
+    val cam: SpeedCam,
+    val distanceMeters: Float,
+    val bearing: Float
+)
+
 @HiltViewModel
 class SpeedCamViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val dataStore: DataStore<Preferences>,
-    private val speedCamRepository: SpeedCamRepository
+    private val speedCamRepository: SpeedCamRepository,
+    private val locationRepository: LocationRepository
 ) : ViewModel() {
 
     companion object {
@@ -93,6 +107,39 @@ class SpeedCamViewModel @Inject constructor(
                     _resultMessage.value = result
                     refreshDbState()
                 }
+            }
+        }
+        // ── Nearby cameras ─────────────────────────────────
+        viewModelScope.launch {
+            combine(
+                locationRepository.lastLocation,
+                speedCamRepository.allActiveFlow
+            ) { location, cameras ->
+                Pair(location, cameras)
+            }.collect { (location, cameras) ->
+                val nearby = if (location != null) {
+                    cameras.mapNotNull { cam ->
+                        val dist = FloatArray(1)
+                        Location.distanceBetween(
+                            location.latitude, location.longitude,
+                            cam.latitude, cam.longitude,
+                            dist
+                        )
+                        if (dist[0] <= 5000f) { // только в радиусе 5 км
+                            NearbyCamItem(cam, dist[0], 0f)
+                        } else null
+                    }.sortedBy { it.distanceMeters }
+                        .take(20)
+                } else emptyList()
+
+                val locStr = if (location != null) {
+                    "${"%.4f".format(location.latitude)}, ${"%.4f".format(location.longitude)}"
+                } else ""
+
+                _state.value = _state.value.copy(
+                    nearbyCameras = nearby,
+                    currentLocation = locStr
+                )
             }
         }
     }

@@ -5,13 +5,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -23,9 +23,13 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.GpsFixed
+import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Sensors
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -55,6 +59,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -64,6 +69,7 @@ import com.yourapp.obd.ui.theme.AccentCyan
 import com.yourapp.obd.ui.theme.AlertRed
 import com.yourapp.obd.ui.theme.DarkBackground
 import com.yourapp.obd.ui.theme.DarkSurface
+import com.yourapp.obd.ui.theme.GreenOk
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -80,9 +86,7 @@ fun SpeedCamScreen(
     val resultMessage by viewModel.resultMessage.collectAsStateWithLifecycle()
 
     LaunchedEffect(resultMessage) {
-        resultMessage?.let {
-            viewModel.clearResult()
-        }
+        resultMessage?.let { viewModel.clearResult() }
     }
 
     Scaffold(
@@ -106,6 +110,53 @@ fun SpeedCamScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // ── Секция: ближайшие камеры ──
+            item(key = "nearby") {
+                SectionCard("Ближайшие камеры") {
+                    val nearby = state.nearbyCameras
+
+                    if (state.currentLocation.isBlank()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        ) {
+                            Icon(
+                                Icons.Default.GpsFixed,
+                                null,
+                                tint = Color.Gray,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                "Включите GPS для отображения ближайших камер",
+                                color = Color.Gray,
+                                fontSize = 12.sp
+                            )
+                        }
+                    } else if (nearby.isEmpty()) {
+                        Text(
+                            "В радиусе 5 км камер не обнаружено",
+                            color = Color.Gray,
+                            fontSize = 12.sp,
+                            modifier = Modifier.padding(vertical = 8.dp)
+                        )
+                    } else {
+                        Text(
+                            "${nearby.size} камер в радиусе 5 км",
+                            color = AccentCyan,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.Medium
+                        )
+                        Spacer(Modifier.height(6.dp))
+
+                        nearby.forEach { item ->
+                            NearbyCamCard(item)
+                            Spacer(Modifier.height(4.dp))
+                        }
+                    }
+                }
+            }
+
             // ── Секция: статус и статистика ──
             item(key = "status") {
                 SectionCard("Состояние базы") {
@@ -133,7 +184,6 @@ fun SpeedCamScreen(
                             fontSize = 12.sp
                         )
                     }
-
                     Spacer(Modifier.height(4.dp))
                     Text(
                         "Типы камер: стационарные скорости, красный свет, средняя скорость, передвижные",
@@ -214,12 +264,7 @@ fun SpeedCamScreen(
                             Spacer(Modifier.width(8.dp))
                             Text("Обновление...", color = Color.White)
                         } else {
-                            Icon(
-                                Icons.Default.Refresh,
-                                null,
-                                tint = Color.White,
-                                modifier = Modifier.size(18.dp)
-                            )
+                            Icon(Icons.Default.Refresh, null, tint = Color.White, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.width(8.dp))
                             Text("Обновить базу камер", color = Color.White)
                         }
@@ -250,11 +295,7 @@ fun SpeedCamScreen(
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             if (isRollingBack) {
-                                CircularProgressIndicator(
-                                    Modifier.size(18.dp),
-                                    color = Color.White,
-                                    strokeWidth = 2.dp
-                                )
+                                CircularProgressIndicator(Modifier.size(18.dp), color = Color.White, strokeWidth = 2.dp)
                                 Spacer(Modifier.width(8.dp))
                                 Text("Откат...", color = Color.White)
                             } else {
@@ -270,10 +311,8 @@ fun SpeedCamScreen(
                 item(key = "history") {
                     SectionCard("История обновлений") {
                         state.updateHistory.take(10).forEach { item ->
-                            val dateStr = SimpleDateFormat(
-                                "dd.MM.yyyy HH:mm",
-                                Locale.getDefault()
-                            ).format(Date(item.timestamp))
+                            val dateStr = SimpleDateFormat("dd.MM.yyyy HH:mm", Locale.getDefault())
+                                .format(Date(item.timestamp))
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -281,15 +320,11 @@ fun SpeedCamScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    dateStr,
-                                    color = Color.Gray,
-                                    fontSize = 10.sp,
+                                    dateStr, color = Color.Gray, fontSize = 10.sp,
                                     modifier = Modifier.width(90.dp)
                                 )
                                 Text(
-                                    item.summary,
-                                    color = Color.Gray,
-                                    fontSize = 10.sp,
+                                    item.summary, color = Color.Gray, fontSize = 10.sp,
                                     modifier = Modifier.weight(1f)
                                 )
                             }
@@ -309,9 +344,60 @@ fun SpeedCamScreen(
                 }
             }
 
-            item {
-                Spacer(Modifier.height(16.dp))
+            item { Spacer(Modifier.height(16.dp)) }
+        }
+    }
+}
+
+@Composable
+private fun NearbyCamCard(item: NearbyCamItem) {
+    val cam = item.cam
+    val distanceStr = when {
+        item.distanceMeters < 1000 -> "${item.distanceMeters.toInt()} м"
+        else -> "${"%.1f".format(item.distanceMeters / 1000f)} км"
+    }
+    val speedStr = cam.speedLimitKmh?.let { "⚡ $it км/ч" } ?: ""
+    val typeColor = when (cam.type.name) {
+        "SPEED" -> AccentCyan
+        "REDLIGHT" -> Color(0xFFFF6D00)
+        "AVERAGE" -> Color(0xFF00E676)
+        "MOBILE" -> Color(0xFFFFC107)
+        else -> Color.Gray
+    }
+    val roadStr = cam.road ?: ""
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1A1A2E)),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .background(typeColor, RoundedCornerShape(4.dp))
+            )
+            Spacer(Modifier.width(8.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(cam.type.name, color = typeColor, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                    if (speedStr.isNotBlank()) {
+                        Spacer(Modifier.width(6.dp))
+                        Text(speedStr, color = AccentCyan, fontSize = 11.sp)
+                    }
+                }
+                if (roadStr.isNotBlank()) {
+                    Text(roadStr, color = Color.Gray, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
             }
+            Icon(Icons.Default.LocationOn, null, tint = typeColor, modifier = Modifier.size(14.dp))
+            Spacer(Modifier.width(3.dp))
+            Text(distanceStr, color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Medium)
         }
     }
 }
@@ -326,12 +412,7 @@ private fun SectionCard(title: String, content: @Composable () -> Unit) {
         shape = RoundedCornerShape(12.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                title,
-                color = AccentCyan,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold
-            )
+            Text(title, color = AccentCyan, fontSize = 14.sp, fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(12.dp))
             content()
         }
@@ -391,12 +472,7 @@ private fun PresetSelector(
                     fontSize = 12.sp,
                     modifier = Modifier.weight(1f)
                 )
-                Icon(
-                    Icons.Default.ExpandMore,
-                    null,
-                    tint = Color.Gray,
-                    modifier = Modifier.size(16.dp)
-                )
+                Icon(Icons.Default.ExpandMore, null, tint = Color.Gray, modifier = Modifier.size(16.dp))
             }
             DropdownMenu(
                 expanded = expanded,
@@ -413,10 +489,7 @@ private fun PresetSelector(
                                 Text(preset.description, color = Color.Gray, fontSize = 10.sp)
                             }
                         },
-                        onClick = {
-                            expanded = false
-                            onSelectPreset(index)
-                        }
+                        onClick = { expanded = false; onSelectPreset(index) }
                     )
                 }
             }
@@ -427,12 +500,7 @@ private fun PresetSelector(
             shape = RoundedCornerShape(8.dp),
             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
         ) {
-            Icon(
-                Icons.Default.Sensors,
-                null,
-                tint = AccentCyan,
-                modifier = Modifier.size(14.dp)
-            )
+            Icon(Icons.Default.Sensors, null, tint = AccentCyan, modifier = Modifier.size(14.dp))
             Spacer(Modifier.width(4.dp))
             Text("РБ", color = AccentCyan, fontSize = 11.sp)
         }
@@ -447,16 +515,8 @@ private fun CameraTypeRow(code: String, label: String, color: Color) {
             .padding(vertical = 3.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        Box(
-            modifier = Modifier
-                .size(8.dp)
-                .background(color, RoundedCornerShape(4.dp))
-        )
+        Box(modifier = Modifier.size(8.dp).background(color, RoundedCornerShape(4.dp)))
         Spacer(Modifier.width(8.dp))
-        Text(
-            "$code — $label",
-            color = Color.Gray,
-            fontSize = 11.sp
-        )
+        Text("$code — $label", color = Color.Gray, fontSize = 11.sp)
     }
 }

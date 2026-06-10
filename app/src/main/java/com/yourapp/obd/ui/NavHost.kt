@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.filled.Radar
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -22,6 +23,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.yourapp.obd.ui.about.AboutScreen
 import com.yourapp.obd.ui.dashboard.DashboardScreen
 import com.yourapp.obd.ui.dashboard.DvrAdasScreen
 import com.yourapp.obd.ui.dtc.DtcScreen
@@ -29,6 +31,7 @@ import com.yourapp.obd.ui.menu.MenuScreen
 import com.yourapp.obd.ui.player.PlayerScreen
 import com.yourapp.obd.ui.settings.SettingsScreen
 import com.yourapp.obd.ui.speedcam.SpeedCamScreen
+import com.yourapp.obd.ui.trip.TripHistoryScreen
 
 object Routes {
     const val DVR_ADAS = "dvr_adas"
@@ -38,6 +41,8 @@ object Routes {
     const val DTC = "dtc"
     const val PLAYER = "player"
     const val SPEEDCAM = "speedcam"
+    const val TRIPS = "trips"
+    const val ABOUT = "about"
 }
 
 private data class BottomNavItem(
@@ -49,6 +54,7 @@ private data class BottomNavItem(
 private val bottomNavItems = listOf(
     BottomNavItem(Routes.DVR_ADAS, Icons.Default.Videocam, "DVR"),
     BottomNavItem(Routes.COMPUTER, Icons.Default.Dashboard, "Панель"),
+    BottomNavItem(Routes.SPEEDCAM, Icons.Default.Radar, "Радар"),
     BottomNavItem(Routes.MENU, Icons.Default.Menu, "Меню")
 )
 
@@ -92,6 +98,11 @@ fun KiaOBDNavHost() {
                 composable(Routes.COMPUTER) {
                     DashboardScreen()
                 }
+                composable(Routes.SPEEDCAM) {
+                    SpeedCamScreen(
+                        onBack = { navController.popBackStack() }
+                    )
+                }
                 composable(Routes.MENU) {
                     MenuScreen(
                         onNavigateToDtc = { navController.navigate(Routes.DTC) },
@@ -127,6 +138,18 @@ fun KiaOBDNavHost() {
                                 popUpTo(Routes.MENU)
                                 launchSingleTop = true
                             }
+                        },
+                        onNavigateToTrips = {
+                            navController.navigate(Routes.TRIPS) {
+                                popUpTo(Routes.MENU)
+                                launchSingleTop = true
+                            }
+                        },
+                        onNavigateToAbout = {
+                            navController.navigate(Routes.ABOUT) {
+                                popUpTo(Routes.MENU)
+                                launchSingleTop = true
+                            }
                         }
                     )
                 }
@@ -151,8 +174,11 @@ fun KiaOBDNavHost() {
                 composable(Routes.PLAYER) {
                     PlayerScreen(onBack = { navController.popBackStack() })
                 }
-                composable(Routes.SPEEDCAM) {
-                    SpeedCamScreen(onBack = { navController.popBackStack() })
+                composable(Routes.TRIPS) {
+                    TripHistoryScreen(onBack = { navController.popBackStack() })
+                }
+                composable(Routes.ABOUT) {
+                    AboutScreen(onBack = { navController.popBackStack() })
                 }
             }
         }

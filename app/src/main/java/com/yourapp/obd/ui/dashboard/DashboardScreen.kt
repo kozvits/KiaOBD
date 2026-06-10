@@ -23,8 +23,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.BluetoothDisabled
+import androidx.compose.material.icons.filled.Route
+import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material.icons.filled.Videocam
 import androidx.compose.material.icons.filled.VideocamOff
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -34,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -60,6 +65,8 @@ fun DashboardScreen(
     val isRecording by viewModel.isRecording.collectAsStateWithLifecycle()
     val obdData by viewModel.obdData.collectAsStateWithLifecycle()
     val lastAlert by viewModel.lastAlert.collectAsStateWithLifecycle()
+    val currentTrip by viewModel.currentTrip.collectAsStateWithLifecycle()
+    val obdAlert by viewModel.obdAlert.collectAsStateWithLifecycle()
 
     Box(
         modifier = Modifier
@@ -71,6 +78,12 @@ fun DashboardScreen(
                 connectionState = connectionState,
                 isRecording = isRecording
             )
+
+            // ── OBD Alert ─────────────────────────────────────
+            obdAlert?.let { alert ->
+                ObdAlertBanner(alert = alert)
+            }
+
             Row(
                 modifier = Modifier
                     .fillMaxSize()
@@ -90,6 +103,9 @@ fun DashboardScreen(
                         .fillMaxHeight()
                 )
             }
+
+            // ── Текущая поездка ───────────────────────────────
+            TripInfoBar(trip = currentTrip)
         }
 
         lastAlert?.let { alert ->
@@ -157,6 +173,36 @@ private fun StatusBar(
 }
 
 @Composable
+private fun ObdAlertBanner(alert: String) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = AlertRed.copy(alpha = 0.85f)),
+        shape = RoundedCornerShape(8.dp)
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                Icons.Default.Warning,
+                null,
+                tint = Color.White,
+                modifier = Modifier.size(16.dp)
+            )
+            Spacer(Modifier.width(6.dp))
+            Text(
+                alert,
+                color = Color.White,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+@Composable
 private fun DigitalGaugesSection(obdData: OBDData, modifier: Modifier) {
     Column(
         modifier = modifier.padding(4.dp),
@@ -211,7 +257,7 @@ private fun DigitalGauge(
             )
             Spacer(modifier = Modifier.height(if (large) 8.dp else 4.dp))
             Text(
-                text = if (unit == "RPM") "$value" else "$value",
+                text = "$value",
                 color = color,
                 fontSize = if (large) 64.sp else 36.sp,
                 fontWeight = FontWeight.Black,
@@ -239,14 +285,14 @@ private fun DigitalMetricsSection(obdData: OBDData, modifier: Modifier) {
         ) {
             MetricCard("ОЖ", obdData.coolantTempC?.let { "$it°C" } ?: "--", AccentCyan)
             MetricCard("MAP", obdData.mapKpa?.let { "$it кПа" } ?: "--", AccentCyan)
-            MetricCard("Дрос.", obdData.throttlePercent?.let { "${"%.0f".format(it)}%" } ?: "--", AccentCyan)
+            MetricCard("Дрос.", obdData.throttlePercent?.let { "${\"%.0f\".format(it)}%" } ?: "--", AccentCyan)
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
-            MetricCard("Топл.", obdData.fuelLevelPercent?.let { "${"%.0f".format(it)}%" } ?: "--", AccentCyan)
-            MetricCard("УОЗ", obdData.timingAdvanceDeg?.let { "${"%.1f".format(it)}°" } ?: "--", AccentCyan)
+            MetricCard("Топл.", obdData.fuelLevelPercent?.let { "${\"%.0f\".format(it)}%" } ?: "--", AccentCyan)
+            MetricCard("УОЗ", obdData.timingAdvanceDeg?.let { "${\"%.1f\".format(it)}°" } ?: "--", AccentCyan)
             MetricCard("ТВЗ", obdData.intakeAirTempC?.let { "$it°C" } ?: "--", AccentCyan)
         }
     }
@@ -277,6 +323,53 @@ private fun MetricCard(label: String, value: String, color: Color) {
                 textAlign = TextAlign.Center
             )
         }
+    }
+}
+
+@Composable
+private fun TripInfoBar(trip: CurrentTripInfo) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        colors = CardDefaults.cardColors(containerColor = DarkSurface.copy(alpha = 0.8f)),
+        shape = RoundedCornerShape(10.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (trip.distanceKm > 0 || trip.durationMinutes > 0) {
+                TripStatItem(Icons.Default.Route, formatDist(trip.distanceKm), "км")
+                TripStatItem(Icons.Default.Timer, "${trip.durationMinutes}", "мин")
+                TripStatItem(Icons.Default.Speed, "${trip.avgSpeedKmh}", "км/ч ср")
+            } else {
+                Text(
+                    "Нет данных поездки",
+                    color = Color.Gray,
+                    fontSize = 12.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TripStatItem(icon: ImageVector, value: String, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Icon(icon, null, tint = AccentCyan, modifier = Modifier.size(14.dp))
+        Spacer(Modifier.width(4.dp))
+        Text(
+            text = value,
+            color = Color.White,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold
+        )
+        Spacer(Modifier.width(2.dp))
+        Text(label, color = Color.Gray, fontSize = 10.sp)
     }
 }
 
@@ -333,4 +426,9 @@ private fun AdasAlertOverlay(alert: AdasAlert, modifier: Modifier) {
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp)
         )
     }
+}
+
+private fun formatDist(km: Float): String {
+    return if (km >= 100f) "%.0f".format(km)
+    else "%.1f".format(km)
 }

@@ -19,19 +19,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AirportShuttle
 import androidx.compose.material.icons.filled.Build
-import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.ListAlt
 import androidx.compose.material.icons.filled.Radar
+import androidx.compose.material.icons.filled.Route
 import androidx.compose.material.icons.filled.Security
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Speed
+import androidx.compose.material.icons.filled.VideoLibrary
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -61,7 +63,9 @@ fun MenuScreen(
     onNavigateToDvr: () -> Unit,
     onNavigateToDashboard: () -> Unit,
     onNavigateToSpeedcam: () -> Unit = {},
-    onNavigateToVideoSettings: () -> Unit = {}
+    onNavigateToVideoSettings: () -> Unit = {},
+    onNavigateToTrips: () -> Unit = {},
+    onNavigateToAbout: () -> Unit = {}
 ) {
     Column(
         modifier = Modifier
@@ -79,9 +83,10 @@ fun MenuScreen(
             modifier = Modifier.padding(bottom = 4.dp)
         )
 
+        // ── ВИДЕО ─────────────────────────────────────────────────
         ExpandableSection(
-            icon = Icons.Default.CameraAlt,
-            title = "Видеорегистратор",
+            icon = Icons.Default.VideoLibrary,
+            title = "Видео",
             accentColor = AccentCyan
         ) {
             MenuItem(
@@ -93,17 +98,18 @@ fun MenuScreen(
             MenuItem(
                 icon = Icons.Default.Description,
                 label = "Архив записей",
-                desc = "Просмотр и удаление видео",
+                desc = "Просмотр, удаление, защита видео",
                 onClick = onNavigateToPlayer
             )
             MenuItem(
                 icon = Icons.Default.Settings,
-                label = "Настройки видео",
+                label = "Настройки записи",
                 desc = "Разрешение, длительность, размер буфера",
                 onClick = onNavigateToVideoSettings
             )
         }
 
+        // ── ПРИБОРНАЯ ПАНЕЛЬ ──────────────────────────────────────
         ExpandableSection(
             icon = Icons.Default.Speed,
             title = "Приборная панель (OBD)",
@@ -112,23 +118,24 @@ fun MenuScreen(
             MenuItem(
                 icon = Icons.Default.Speed,
                 label = "Панель приборов",
-                desc = "Аналоговые датчики, цифровые метрики",
+                desc = "Скорость, RPM, метрики, поездка",
                 onClick = onNavigateToDashboard
             )
             MenuItem(
                 icon = Icons.Default.Build,
                 label = "Диагностика DTC",
-                desc = "Коды ошибок ЭБУ",
+                desc = "Коды ошибок ЭБУ, чтение и сброс",
                 onClick = onNavigateToDtc
             )
             MenuItem(
-                icon = Icons.Default.Settings,
+                icon = Icons.Default.Sensors,
                 label = "Bluetooth OBD-II",
                 desc = "Выбор адаптера ELM327",
                 onClick = { onNavigateToSettings("bluetooth") }
             )
         }
 
+        // ── ADAS ─────────────────────────────────────────────────
         ExpandableSection(
             icon = Icons.Default.Security,
             title = "ADAS",
@@ -147,26 +154,48 @@ fun MenuScreen(
                 onClick = { onNavigateToSettings("adas_sensitivity") }
             )
             MenuItem(
-                icon = Icons.Default.AirportShuttle,
+                icon = Icons.Default.Build,
                 label = "Модули",
-                desc = "Включение/отключение функций",
+                desc = "Включение/отключение функций ADAS",
                 onClick = { onNavigateToSettings("adas_modules") }
             )
         }
 
+        // ── ПОЕЗДКИ ───────────────────────────────────────────────
+        ExpandableSection(
+            icon = Icons.Default.Route,
+            title = "Поездки",
+            accentColor = Color(0xFF00BCD4)
+        ) {
+            MenuItem(
+                icon = Icons.Default.ListAlt,
+                label = "История поездок",
+                desc = "Просмотр пройденных маршрутов и статистики",
+                onClick = onNavigateToTrips
+            )
+            MenuItem(
+                icon = Icons.Default.EmojiEvents,
+                label = "Статистика",
+                desc = "Общий пробег, время, средняя скорость",
+                onClick = onNavigateToTrips
+            )
+        }
+
+        // ── РАДАР (информационно) ─────────────────────────────────
         ExpandableSection(
             icon = Icons.Default.Radar,
             title = "Сигнатурный радар",
-            accentColor = Color(0xFF00BCD4)
+            accentColor = Color(0xFF7C4DFF)
         ) {
             MenuItem(
                 icon = Icons.Default.Radar,
                 label = "База камер SpeedCam (РБ)",
-                desc = "Источники OSM для Беларуси, обновление, откат",
+                desc = "Камеры скорости, обновление, откат",
                 onClick = onNavigateToSpeedcam
             )
         }
 
+        // ── СИСТЕМА ───────────────────────────────────────────────
         ExpandableSection(
             icon = Icons.Default.Settings,
             title = "Система",
@@ -175,8 +204,14 @@ fun MenuScreen(
             MenuItem(
                 icon = Icons.Default.Settings,
                 label = "Все настройки",
-                desc = "OBD-II, видео, ADAS",
+                desc = "OBD-II, видео, ADAS, калибровка",
                 onClick = { onNavigateToSettings(null) }
+            )
+            MenuItem(
+                icon = Icons.Default.Info,
+                label = "О приложении",
+                desc = "Версия, автор, технологии",
+                onClick = onNavigateToAbout
             )
         }
 
