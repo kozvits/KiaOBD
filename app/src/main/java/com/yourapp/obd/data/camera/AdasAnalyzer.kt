@@ -27,7 +27,7 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
         private const val DEFAULT_LDW_DEVIATION = 0.15f
         private const val DEFAULT_FCW_MIN_SPEED = 10
         private const val VEHICLE_MIN_AREA = 500
-        private const val DISTANCE_K = 150f
+        private const val DISTANCE_K = 4f
         private const val FCW_COOLDOWN_MS = 400L
     }
 
@@ -196,8 +196,9 @@ class AdasAnalyzer(private val context: Context) : ImageAnalysis.Analyzer {
             closeK.release(); hier.release(); gray.release(); roi.release()
 
             if (bestArea > 0) {
-                val d = (bestBottom).coerceAtLeast(1)
-                val dist = DISTANCE_K * h / d
+                val roiH = (h - horizonY).coerceAtLeast(1)
+                val d = bestBottom.coerceAtLeast(1)
+                val dist = DISTANCE_K * roiH / d
 
                 // Smooth using exponential moving average
                 val smoothed = if (lastVehicleDistanceM != null) {

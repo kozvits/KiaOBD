@@ -112,8 +112,8 @@ fun DashboardScreen(
             AdasAlertOverlay(
                 alert = alert,
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 16.dp)
+                    .align(Alignment.TopCenter)
+                    .padding(top = 8.dp)
             )
         }
 
@@ -281,19 +281,31 @@ private fun DigitalMetricsSection(obdData: OBDData, modifier: Modifier) {
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            MetricCard("ОЖ", obdData.coolantTempC?.let { "$it°C" } ?: "--", AccentCyan)
-            MetricCard("MAP", obdData.mapKpa?.let { "$it кПа" } ?: "--", AccentCyan)
-            MetricCard("Дрос.", obdData.throttlePercent?.let { "${"%.0f".format(it)}%" } ?: "--", AccentCyan)
+            Box(Modifier.weight(1f)) {
+                MetricCard("ОЖ", obdData.coolantTempC?.let { "$it°C" } ?: "--", AccentCyan)
+            }
+            Box(Modifier.weight(1f)) {
+                MetricCard("MAP", obdData.mapKpa?.let { "$it кПа" } ?: "--", AccentCyan)
+            }
+            Box(Modifier.weight(1f)) {
+                MetricCard("Дрос.", obdData.throttlePercent?.let { "${"%.0f".format(it)}%" } ?: "--", AccentCyan)
+            }
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
-            MetricCard("Топл.", obdData.fuelLevelPercent?.let { "${"%.0f".format(it)}%" } ?: "--", AccentCyan)
-            MetricCard("УОЗ", obdData.timingAdvanceDeg?.let { "${"%.1f".format(it)}°" } ?: "--", AccentCyan)
-            MetricCard("ТВЗ", obdData.intakeAirTempC?.let { "$it°C" } ?: "--", AccentCyan)
+            Box(Modifier.weight(1f)) {
+                MetricCard("Топл.", obdData.fuelLevelPercent?.let { "${"%.0f".format(it)}%" } ?: "--", AccentCyan)
+            }
+            Box(Modifier.weight(1f)) {
+                MetricCard("УОЗ", obdData.timingAdvanceDeg?.let { "${"%.1f".format(it)}°" } ?: "--", AccentCyan)
+            }
+            Box(Modifier.weight(1f)) {
+                MetricCard("ТВЗ", obdData.intakeAirTempC?.let { "$it°C" } ?: "--", AccentCyan)
+            }
         }
     }
 }
@@ -302,7 +314,7 @@ private fun DigitalMetricsSection(obdData: OBDData, modifier: Modifier) {
 private fun MetricCard(label: String, value: String, color: Color) {
     Card(
         modifier = Modifier
-            .width(100.dp)
+            .fillMaxWidth()
             .height(70.dp),
         colors = CardDefaults.cardColors(containerColor = DarkSurface),
         shape = RoundedCornerShape(8.dp)
@@ -423,6 +435,7 @@ private fun AdasAlertOverlay(alert: AdasAlert, modifier: Modifier) {
             color = Color.White,
             fontWeight = FontWeight.Bold,
             fontSize = 16.sp,
+            maxLines = 1,
             modifier = Modifier.padding(horizontal = 24.dp, vertical = 10.dp)
         )
     }

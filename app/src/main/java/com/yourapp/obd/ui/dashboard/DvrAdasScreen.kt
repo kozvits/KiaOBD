@@ -115,13 +115,13 @@ fun DvrAdasScreen(
                 }
         )
 
-        // ── 3. Алерт внизу ─────────────────────────────────────
+        // ── 3. Алерт наверху ────────────────────────────────────
         lastAlert?.let { alert ->
             AdasAlertBanner(
                 alert    = alert,
                 modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 16.dp)
+                    .align(Alignment.TopCenter)
+                    .padding(top = 72.dp)
             )
         }
 
@@ -557,6 +557,7 @@ private fun AdasAlertBanner(alert: AdasAlert, modifier: Modifier) {
             color      = Color.White,
             fontWeight = FontWeight.Bold,
             fontSize   = 17.sp,
+            maxLines   = 1,
             modifier   = Modifier.padding(horizontal = 28.dp, vertical = 12.dp)
         )
     }
