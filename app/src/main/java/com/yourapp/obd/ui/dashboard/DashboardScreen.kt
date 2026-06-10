@@ -43,6 +43,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yourapp.obd.data.bluetooth.ConnectionState
@@ -67,6 +69,8 @@ fun DashboardScreen(
     val lastAlert by viewModel.lastAlert.collectAsStateWithLifecycle()
     val currentTrip by viewModel.currentTrip.collectAsStateWithLifecycle()
     val obdAlert by viewModel.obdAlert.collectAsStateWithLifecycle()
+    val configuration = LocalConfiguration.current
+    val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
 
     Box(
         modifier = Modifier
@@ -84,24 +88,46 @@ fun DashboardScreen(
                 ObdAlertBanner(alert = alert)
             }
 
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(start = 8.dp, end = 8.dp, top = 8.dp)
-            ) {
-                DigitalGaugesSection(
-                    obdData = obdData,
+            if (isLandscape) {
+                Row(
                     modifier = Modifier
-                        .weight(0.55f)
-                        .fillMaxHeight()
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                DigitalMetricsSection(
-                    obdData = obdData,
+                        .fillMaxSize()
+                        .padding(start = 8.dp, end = 8.dp, top = 8.dp)
+                ) {
+                    DigitalGaugesSection(
+                        obdData = obdData,
+                        modifier = Modifier
+                            .weight(0.55f)
+                            .fillMaxHeight()
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    DigitalMetricsSection(
+                        obdData = obdData,
+                        modifier = Modifier
+                            .weight(0.45f)
+                            .fillMaxHeight()
+                    )
+                }
+            } else {
+                Row(
                     modifier = Modifier
-                        .weight(0.45f)
-                        .fillMaxHeight()
-                )
+                        .fillMaxSize()
+                        .padding(start = 8.dp, end = 8.dp, top = 4.dp)
+                ) {
+                    DigitalGaugesSection(
+                        obdData = obdData,
+                        modifier = Modifier
+                            .weight(0.4f)
+                            .fillMaxHeight()
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                    DigitalMetricsSection(
+                        obdData = obdData,
+                        modifier = Modifier
+                            .weight(0.6f)
+                            .fillMaxHeight()
+                    )
+                }
             }
 
             // ── Текущая поездка ───────────────────────────────

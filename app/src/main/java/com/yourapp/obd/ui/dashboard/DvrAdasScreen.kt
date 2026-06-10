@@ -33,7 +33,9 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -49,6 +51,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.compose.ui.platform.LocalConfiguration
+import android.content.res.Configuration
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.yourapp.obd.data.bluetooth.ConnectionState
@@ -76,14 +80,31 @@ fun DvrAdasScreen(
     val showAdasSheet    by viewModel.showAdasSheet.collectAsStateWithLifecycle()
     val adasModules      by viewModel.adasModules.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
+    val orientation = LocalConfiguration.current.orientation
 
-    val laneColor = if (lastAlert is AdasAlert.LaneDeparture) Color(0xCCFF1744) else Color(0xBB00E676)
     val activeFcwLevel = resolveFcwLevel(
         distanceM = fcwDistanceM,
         dangerM = calibration.dangerZoneM,
         warningM = calibration.warningZoneM,
         cautionM = calibration.cautionZoneM,
         alertLevel = (lastAlert as? AdasAlert.ForwardCollision)?.level
+    )
+
+    // ── Цвет полос ADAS по дистанции до препятствия ──────────
+    val targetLaneColor by remember {
+        derivedStateOf {
+            when {
+                lastAlert is AdasAlert.LaneDeparture -> AlertRed
+                activeFcwLevel == AlertLevel.DANGER  -> AlertRed
+                activeFcwLevel == AlertLevel.WARNING -> AlertOrange
+                activeFcwLevel == AlertLevel.CAUTION -> AlertYellow
+                else                                 -> GreenOk
+            }
+        }
+    }
+    val laneColor by animateColorAsState(
+        targetValue = targetLaneColor,
+        label = "laneColor"
     )
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
@@ -160,67 +181,27 @@ fun DvrAdasScreen(
                 .padding(start = 12.dp, top = 52.dp)
         )
 
-        // ── 6. HUD справа ──────────────────────────────────────
-        Column(
-            modifier = Modifier
-                .align(Alignment.TopEnd)
-                .padding(top = 8.dp, end = 8.dp),
-            horizontalAlignment = Alignment.End,
-            verticalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            HudCard {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("ДИСТ.", color = Color.Gray, fontSize = 9.sp, fontWeight = FontWeight.Bold)
-                    val dist = fcwDistanceM
-                    Text(
-                        text = if (dist != null) "${dist.toInt()} м" else "--",
-                        color = when (activeFcwLevel) {
-                            AlertLevel.DANGER  -> AlertRed
-                            AlertLevel.WARNING -> AlertOrange
-                            AlertLevel.CAUTION -> AlertYellow
-                            null               -> GreenOk
-                        },
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-            HudCard {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("СКОРОСТЬ", color = Color.Gray, fontSize = 9.sp)
-                    Text(
-                        text       = "${obdData.speedKmh ?: 0}",
-                        color      = AccentCyan,
-                        fontSize   = 26.sp,
-                        fontWeight = FontWeight.Black
-                    )
-                    Text("км/ч", color = Color.Gray, fontSize = 9.sp)
-                }
-            }
-            HudCard {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("ОЖ", color = Color.Gray, fontSize = 9.sp)
-                    val t = obdData.coolantTempC
-                    Text(
-                        text       = if (t != null) "${t}°C" else "--",
-                        color      = when { t == null -> Color.Gray; t >= 100 -> AlertRed; t >= 90 -> AlertYellow; else -> GreenOk },
-                        fontSize   = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
-            HudCard {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("СЕТЬ", color = Color.Gray, fontSize = 9.sp)
-                    val v = obdData.voltageV
-                    Text(
-                        text       = if (v != null) "${"%.1f".format(v)}В" else "--",
-                        color      = when { v == null -> Color.Gray; v < 11.5f -> AlertRed; v < 12.5f -> AlertYellow; else -> GreenOk },
-                        fontSize   = 16.sp,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            }
+        // ── 6. HUD ──────────────────────────────────────────
+        if (orientation == Configuration.ORIENTATION_LANDSCAPE) {
+            // Landscape: вертикальный ряд справа
+            HudColumn(
+                obdData = obdData,
+                fcwDistanceM = fcwDistanceM,
+                activeFcwLevel = activeFcwLevel,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .padding(top = 8.dp, end = 8.dp)
+            )
+        } else {
+            // Portrait: горизонтальный ряд снизу
+            HudRow(
+                obdData = obdData,
+                fcwDistanceM = fcwDistanceM,
+                activeFcwLevel = activeFcwLevel,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 36.dp)
+            )
         }
 
         // ── 7. OBD статус ──────────────────────────────────────
@@ -530,6 +511,139 @@ private fun HudCard(content: @Composable () -> Unit) {
         shape  = RoundedCornerShape(10.dp)
     ) {
         Box(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) { content() }
+    }
+}
+
+@Composable
+private fun HudColumn(
+    obdData: com.yourapp.obd.domain.model.OBDData,
+    fcwDistanceM: Float?,
+    activeFcwLevel: AlertLevel?,
+    modifier: Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.End,
+        verticalArrangement = Arrangement.spacedBy(6.dp)
+    ) {
+        HudCard {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("ДИСТ.", color = Color.Gray, fontSize = 9.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = if (fcwDistanceM != null) "${fcwDistanceM.toInt()} м" else "--",
+                    color = when (activeFcwLevel) {
+                        AlertLevel.DANGER  -> AlertRed
+                        AlertLevel.WARNING -> AlertOrange
+                        AlertLevel.CAUTION -> AlertYellow
+                        null               -> GreenOk
+                    },
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        HudCard {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("СКОРОСТЬ", color = Color.Gray, fontSize = 9.sp)
+                Text(
+                    text       = "${obdData.speedKmh ?: 0}",
+                    color      = AccentCyan,
+                    fontSize   = 26.sp,
+                    fontWeight = FontWeight.Black
+                )
+                Text("км/ч", color = Color.Gray, fontSize = 9.sp)
+            }
+        }
+        HudCard {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("ОЖ", color = Color.Gray, fontSize = 9.sp)
+                val t = obdData.coolantTempC
+                Text(
+                    text       = if (t != null) "${t}°C" else "--",
+                    color      = when { t == null -> Color.Gray; t >= 100 -> AlertRed; t >= 90 -> AlertYellow; else -> GreenOk },
+                    fontSize   = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        HudCard {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("СЕТЬ", color = Color.Gray, fontSize = 9.sp)
+                val v = obdData.voltageV
+                Text(
+                    text       = if (v != null) "${"%.1f".format(v)}В" else "--",
+                    color      = when { v == null -> Color.Gray; v < 11.5f -> AlertRed; v < 12.5f -> AlertYellow; else -> GreenOk },
+                    fontSize   = 16.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun HudRow(
+    obdData: com.yourapp.obd.domain.model.OBDData,
+    fcwDistanceM: Float?,
+    activeFcwLevel: AlertLevel?,
+    modifier: Modifier
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.Bottom
+    ) {
+        HudCard {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("ДИСТ.", color = Color.Gray, fontSize = 8.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    text = if (fcwDistanceM != null) "${fcwDistanceM.toInt()}м" else "--",
+                    color = when (activeFcwLevel) {
+                        AlertLevel.DANGER  -> AlertRed
+                        AlertLevel.WARNING -> AlertOrange
+                        AlertLevel.CAUTION -> AlertYellow
+                        null               -> GreenOk
+                    },
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        HudCard {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("СКОР.", color = Color.Gray, fontSize = 8.sp)
+                Text(
+                    text       = "${obdData.speedKmh ?: 0}",
+                    color      = AccentCyan,
+                    fontSize   = 18.sp,
+                    fontWeight = FontWeight.Black
+                )
+            }
+        }
+        HudCard {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("ОЖ", color = Color.Gray, fontSize = 8.sp)
+                val t = obdData.coolantTempC
+                Text(
+                    text       = if (t != null) "${t}°C" else "--",
+                    color      = when { t == null -> Color.Gray; t >= 100 -> AlertRed; t >= 90 -> AlertYellow; else -> GreenOk },
+                    fontSize   = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+        HudCard {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("СЕТЬ", color = Color.Gray, fontSize = 8.sp)
+                val v = obdData.voltageV
+                Text(
+                    text       = if (v != null) "${"%.1f".format(v)}В" else "--",
+                    color      = when { v == null -> Color.Gray; v < 11.5f -> AlertRed; v < 12.5f -> AlertYellow; else -> GreenOk },
+                    fontSize   = 14.sp,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
     }
 }
 

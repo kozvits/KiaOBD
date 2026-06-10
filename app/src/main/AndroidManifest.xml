@@ -33,13 +33,11 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="false"
         android:theme="@style/Theme.KiaOBD"
-        android:screenOrientation="landscape"
         tools:targetApi="35">
 
         <activity
             android:name=".ui.MainActivity"
             android:exported="true"
-            android:screenOrientation="landscape"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:keepScreenOn="true"
             android:windowSoftInputMode="stateHidden|adjustResize">
